@@ -2105,15 +2105,21 @@ function svRender(){
   const ev = svEventData;
   // Compatibilité avec les soirées créées avant la fusion dates+jeux en une seule étape
   if (ev.status === 'dates' || ev.status === 'game') ev.status = 'voting';
-  if (!ev.votes){
-    ev.votes = {};
-    Object.entries(ev.dateVotes || {}).forEach(([vid, v]) => {
-      ev.votes[vid] = Object.assign({}, ev.votes[vid], { name: v.name, availableDates: v.availableDates || [] });
-    });
-    Object.entries(ev.gameVotes || {}).forEach(([vid, v]) => {
-      ev.votes[vid] = Object.assign({}, ev.votes[vid], { name: v.name, gameChoices: v.choices || [] });
-    });
-  }
+  ev.votes = ev.votes || {};
+  Object.entries(ev.dateVotes || {}).forEach(([vid, v]) => {
+    if (!ev.votes[vid]){
+      ev.votes[vid] = { name: v.name, availableDates: v.availableDates || [] };
+    } else if (ev.votes[vid].availableDates === undefined){
+      ev.votes[vid].availableDates = v.availableDates || [];
+    }
+  });
+  Object.entries(ev.gameVotes || {}).forEach(([vid, v]) => {
+    if (!ev.votes[vid]){
+      ev.votes[vid] = { name: v.name, gameChoices: v.choices || [] };
+    } else if (ev.votes[vid].gameChoices === undefined){
+      ev.votes[vid].gameChoices = v.choices || [];
+    }
+  });
 
   document.getElementById('sv-pageTitle').textContent = ev.title || 'Soirée';
   document.getElementById('sv-pageSub').textContent = stageLabel(ev.status);
