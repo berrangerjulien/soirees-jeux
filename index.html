@@ -1,0 +1,2549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ce soir, on joue à quoi ?</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --bg:#12141c;
+    --surface:#1a1d29;
+    --surface-hi:#232735;
+    --line:#333a4d;
+    --ink:#eef0f7;
+    --ink-dim:#8d93a8;
+    --accent:#ff6b4a;
+    --accent-dim:#c94f34;
+    --accent-soft:rgba(255,107,74,0.15);
+    --teal:#3ec9a7;
+    --teal-dim:#2b9078;
+    --teal-soft:rgba(62,201,167,0.15);
+    --gold:#e8b64c;
+    --danger:#ff5470;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+  .mono{font-family:'Courier New',Consolas,monospace;letter-spacing:0.02em;}
+  .display{font-family:Georgia,'Palatino Linotype',serif;}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 80px;}
+
+  header.hero{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    padding-bottom:18px;margin-bottom:20px;flex-wrap:wrap;gap:10px;
+    position:relative;
+  }
+  header.hero::after{
+    content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg, var(--accent), var(--teal), transparent);
+    border-radius:2px;
+  }
+  header.hero h1{
+    font-size:2.1rem;margin:0;font-weight:800;letter-spacing:-0.01em;
+    font-family:Georgia,serif;
+  }
+  header.hero .sub{color:var(--ink-dim);font-size:0.92rem;margin-top:6px;}
+  header.hero .count-badge{
+    font-family:'Courier New',monospace;color:var(--accent);
+    font-size:0.95rem;text-align:right;
+  }
+  .count-badge b{font-size:1.7rem;display:block;font-family:Georgia,serif;color:var(--accent);}
+
+  nav.tabs{
+    display:flex;gap:8px;margin-bottom:22px;border-bottom:1px solid var(--line);
+  }
+  nav.tabs button{
+    background:none;border:none;color:var(--ink-dim);font-size:0.95rem;
+    padding:10px 18px;cursor:pointer;border-bottom:3px solid transparent;
+    font-weight:600;transition:color .15s;
+  }
+  nav.tabs button.active{color:var(--ink);border-bottom-color:var(--accent);}
+  nav.tabs button:hover{color:var(--ink);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:20px 22px;margin-bottom:18px;
+  }
+  .panel h2{
+    font-size:0.72rem;text-transform:uppercase;letter-spacing:0.12em;
+    color:var(--ink-dim);margin:0 0 14px 0;font-weight:700;
+  }
+  .row{display:flex;gap:28px;flex-wrap:wrap;}
+  .field{flex:1;min-width:220px;}
+
+  .stepper{display:flex;align-items:center;gap:14px;}
+  .stepper button{
+    width:38px;height:38px;border-radius:10px;border:1px solid var(--line);
+    background:var(--surface-hi);color:var(--accent);font-size:1.2rem;cursor:pointer;
+    transition:background .15s;
+  }
+  .stepper button:hover{background:var(--accent);color:var(--bg);}
+  .stepper .val{
+    font-family:Georgia,serif;font-size:1.9rem;min-width:38px;text-align:center;
+    color:var(--ink);font-weight:700;
+  }
+  .stepper .lbl{color:var(--ink-dim);font-size:0.85rem;}
+
+  input[type=range]{
+    width:100%;-webkit-appearance:none;height:4px;background:var(--line);
+    border-radius:2px;outline:none;margin-top:10px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--accent);cursor:pointer;border:2px solid var(--bg);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;background:var(--accent);
+    cursor:pointer;border:2px solid var(--bg);
+  }
+  .range-val{font-family:'Courier New',monospace;color:var(--accent);font-size:0.95rem;}
+
+  select, .searchbox, input[type=text], input[type=number], input[type=date], textarea{
+    width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--line);
+    background:var(--surface-hi);color:var(--ink);font-size:0.92rem;font-family:inherit;
+  }
+  textarea{resize:vertical;min-height:60px;}
+  select:focus,.searchbox:focus,input:focus,textarea:focus{outline:2px solid var(--accent-dim);}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .chip{
+    padding:6px 12px;border-radius:20px;border:1px solid var(--line);
+    background:var(--surface-hi);color:var(--ink-dim);font-size:0.82rem;
+    cursor:pointer;user-select:none;transition:all .15s;
+  }
+  .chip:hover{border-color:var(--accent-dim);color:var(--ink);}
+  .chip.active{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700;}
+  .chip .n{opacity:0.65;font-size:0.78em;margin-left:3px;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .reset-btn{
+    background:none;border:1px solid var(--line);color:var(--ink-dim);
+    padding:8px 14px;border-radius:8px;cursor:pointer;font-size:0.85rem;
+  }
+  .reset-btn:hover{color:var(--ink);border-color:var(--ink-dim);}
+
+  .add-btn{
+    background:none;color:var(--teal);border:1px solid var(--teal-dim);
+    padding:8px 14px;border-radius:8px;cursor:pointer;font-size:0.85rem;
+    display:flex;align-items:center;gap:6px;
+  }
+  .add-btn:hover{background:var(--teal);color:var(--bg);}
+
+  .draw-btn{
+    background:var(--accent);color:var(--bg);border:none;
+    padding:12px 22px;border-radius:10px;font-size:1rem;font-weight:700;
+    cursor:pointer;display:flex;align-items:center;gap:10px;
+    box-shadow:0 3px 0 var(--accent-dim);transition:transform .1s;
+  }
+  .draw-btn:hover{transform:translateY(-1px);}
+  .draw-btn:active{transform:translateY(2px);box-shadow:none;}
+  .draw-btn:disabled{opacity:0.5;cursor:default;}
+  .die{font-size:1.3rem;display:inline-block;}
+  .die.rolling{animation:spin 0.15s linear infinite;}
+  @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+    gap:16px;
+  }
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;display:flex;flex-direction:column;gap:8px;
+    transition:border-color .2s, box-shadow .2s, transform .15s;
+    overflow:hidden;
+  }
+  .card.picked{
+    border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+    transform:translateY(-2px);
+  }
+  .card h3{margin:0;font-family:Georgia,serif;font-size:1.12rem;line-height:1.25;}
+  .card-img{
+    width:calc(100% + 32px);margin:-16px -16px 0 -16px;height:140px;object-fit:cover;
+    border-radius:var(--radius) var(--radius) 0 0;display:block;
+  }
+  .card-img-broken{
+    display:flex;align-items:center;justify-content:center;
+    background:var(--surface-hi);color:var(--ink-dim);font-size:0.78rem;
+  }
+  .card .univers{color:var(--gold);font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;}
+  .badge{
+    font-family:'Courier New',monospace;font-size:0.78rem;
+    background:var(--surface-hi);border:1px solid var(--line);
+    padding:3px 8px;border-radius:6px;color:var(--ink-dim);
+  }
+  .badge.warn{color:var(--danger);border-color:var(--danger);}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;}
+  .tag{
+    font-size:0.72rem;color:var(--teal);background:var(--teal-soft);
+    border:1px solid transparent;padding:2px 7px;border-radius:12px;
+  }
+  .note{
+    margin-top:auto;padding-top:6px;font-size:0.8rem;color:var(--ink-dim);
+    border-top:1px solid var(--line);
+  }
+  .note b{color:var(--gold);}
+  .resume{
+    font-size:0.82rem;color:var(--ink-dim);line-height:1.4;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .video-link{
+    font-size:0.8rem;color:var(--accent);text-decoration:none;font-weight:600;
+    display:inline-flex;align-items:center;gap:5px;
+  }
+  .video-link:hover{text-decoration:underline;}
+
+  .empty{text-align:center;padding:60px 20px;color:var(--ink-dim);}
+  .empty .big{font-size:2.4rem;margin-bottom:10px;}
+
+  footer{
+    text-align:center;color:var(--ink-dim);font-size:0.78rem;margin-top:50px;
+    border-top:1px solid var(--line);padding-top:16px;
+  }
+
+  .badge-custom{
+    font-size:0.68rem;color:var(--teal);border:1px solid var(--teal-dim);
+    padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.05em;
+  }
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .del-btn{
+    background:none;border:none;color:var(--ink-dim);cursor:pointer;
+    font-size:1.1rem;line-height:1;padding:0 2px;flex-shrink:0;
+  }
+  .del-btn:hover{color:var(--danger);}
+  .edit-btn{
+    background:none;border:none;color:var(--ink-dim);cursor:pointer;
+    font-size:0.95rem;line-height:1;padding:0 2px;flex-shrink:0;
+  }
+  .edit-btn:hover{color:var(--accent);}
+
+  .ext-toggle{
+    display:flex;align-items:center;gap:8px;margin-top:12px;
+    font-size:0.8rem;color:var(--ink-dim);cursor:pointer;
+  }
+  .ext-toggle input{accent-color:var(--teal);width:16px;height:16px;}
+  .ext-note{font-size:0.72rem;color:var(--teal);margin-top:2px;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(8,9,14,0.7);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;
+  }
+  .modal h2{
+    font-family:Georgia,serif;font-size:1.3rem;margin:0 0 4px 0;text-transform:none;
+    letter-spacing:0;color:var(--ink);
+  }
+  .modal .sub{color:var(--ink-dim);font-size:0.82rem;margin-bottom:18px;}
+  .modal label{
+    display:block;font-size:0.78rem;color:var(--ink-dim);margin-bottom:5px;
+    text-transform:uppercase;letter-spacing:0.05em;
+  }
+  .modal .frow{margin-bottom:14px;}
+  .modal .two-col{display:flex;gap:12px;}
+  .modal .two-col .frow{flex:1;}
+  .modal .hint{color:var(--ink-dim);font-size:0.72rem;margin-top:4px;}
+  .modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .modal .cancel-btn{
+    background:none;border:1px solid var(--line);color:var(--ink-dim);
+    padding:9px 16px;border-radius:8px;cursor:pointer;
+  }
+  .modal .save-btn{
+    background:var(--accent);border:none;color:var(--bg);font-weight:700;
+    padding:9px 18px;border-radius:8px;cursor:pointer;
+  }
+  .modal .error{color:var(--danger);font-size:0.8rem;margin-top:10px;display:none;}
+  .modal .checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .modal .checkbox-row input{width:16px;height:16px;accent-color:var(--teal);}
+  .modal .checkbox-row label{margin:0;text-transform:none;font-size:0.88rem;color:var(--ink);}
+
+  /* Stats & sessions */
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px;}
+  .stat-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .stat-card .n{font-family:Georgia,serif;font-size:1.9rem;font-weight:700;color:var(--accent);}
+  .stat-card .lbl{font-size:0.78rem;color:var(--ink-dim);margin-top:2px;}
+
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .bar-row .name{width:130px;flex-shrink:0;font-size:0.85rem;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar-track{flex:1;background:var(--surface-hi);border-radius:6px;height:18px;overflow:hidden;}
+  .bar-fill{height:100%;background:linear-gradient(90deg, var(--teal-dim), var(--teal));border-radius:6px;}
+  .bar-row .val{width:56px;text-align:right;font-family:'Courier New',monospace;font-size:0.8rem;color:var(--ink-dim);flex-shrink:0;}
+
+  table.stat-table{width:100%;border-collapse:collapse;font-size:0.88rem;}
+  table.stat-table th{
+    text-align:left;color:var(--ink-dim);font-size:0.72rem;text-transform:uppercase;
+    letter-spacing:0.05em;padding:8px 10px;border-bottom:1px solid var(--line);
+  }
+  table.stat-table td{padding:9px 10px;border-bottom:1px solid var(--line);}
+  table.stat-table tr:last-child td{border-bottom:none;}
+  table.stat-table .win-rate{color:var(--teal);font-weight:700;font-family:'Courier New',monospace;}
+
+  .session-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;
+    align-items:flex-start;gap:12px;flex-wrap:wrap;
+  }
+  .session-card .s-main{flex:1;min-width:200px;}
+  .session-card h4{margin:0 0 4px 0;font-family:Georgia,serif;font-size:1.05rem;}
+  .session-card .s-meta{font-size:0.8rem;color:var(--ink-dim);}
+  .session-card .s-players{font-size:0.82rem;margin-top:6px;}
+  .session-card .s-winner{color:var(--gold);font-weight:700;}
+  .session-card .s-actions{display:flex;gap:6px;}
+  .session-card .s-notes{font-size:0.8rem;color:var(--ink-dim);margin-top:6px;font-style:italic;}
+
+  .collapsible-toggle{
+    color:var(--ink-dim);font-size:0.82rem;cursor:pointer;text-decoration:underline;
+    text-decoration-color:var(--line);
+  }
+  .collapsible-toggle:hover{color:var(--ink);}
+  .never-played-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .never-played-list .tag{color:var(--ink-dim);background:var(--surface-hi);}
+
+  .date-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .date-row input[type=date]{flex:1;}
+  .date-row .del-btn{font-size:1.2rem;}
+
+  .mini-cal{max-width:340px;}
+  .mini-cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .mini-cal-head span{font-family:Georgia,serif;font-size:1rem;text-transform:capitalize;}
+  .mini-cal-head button{padding:6px 12px;}
+  .mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .mini-cal-dow{text-align:center;font-size:0.68rem;color:var(--ink-dim);text-transform:uppercase;padding-bottom:4px;}
+  .mini-cal-day{
+    text-align:center;padding:8px 0;border-radius:8px;font-size:0.85rem;cursor:pointer;
+    background:var(--surface-hi);color:var(--ink);transition:background .15s;
+  }
+  .mini-cal-day:hover{background:var(--accent-dim);color:var(--bg);}
+  .mini-cal-day.selected{background:var(--accent);color:var(--bg);font-weight:700;}
+  .mini-cal-day.past{opacity:0.3;cursor:default;pointer-events:none;background:transparent;}
+  .mini-cal-day.empty{background:transparent;cursor:default;}
+
+  .event-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;margin-bottom:16px;
+  }
+  .event-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;}
+  .event-card-head h3{margin:0;font-family:Georgia,serif;font-size:1.15rem;}
+  .event-card-head .ev-meta{color:var(--ink-dim);font-size:0.82rem;margin-top:2px;}
+  .guest-row{
+    display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);
+  }
+  .guest-row:last-child{border-bottom:none;}
+  .guest-row .guest-name{flex:1;font-size:0.9rem;}
+  .guest-row .guest-contact{color:var(--ink-dim);font-size:0.78rem;font-family:'Courier New',monospace;}
+  .guest-status{
+    padding:4px 10px;border-radius:20px;font-size:0.76rem;font-weight:700;border:1px solid transparent;
+  }
+  .guest-status.invite{background:var(--surface-hi);color:var(--ink-dim);}
+  .guest-status.confirme{background:var(--teal-soft);color:var(--teal);}
+  .guest-status.decline{background:rgba(255,84,112,0.15);color:var(--danger);}
+  .add-guest-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .add-guest-row input{flex:1;min-width:120px;}
+  .ev-tally{font-size:0.8rem;color:var(--ink-dim);margin-top:2px;}
+
+  @media (max-width:600px){
+    header.hero{flex-direction:column;align-items:flex-start;}
+    .row{gap:16px;}
+    .bar-row .name{width:90px;}
+  }
+
+  .backup-bar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:10px 16px;margin-bottom:18px;font-size:0.82rem;
+  }
+  .backup-lbl{color:var(--ink-dim);}
+  .backup-status{color:var(--teal);font-size:0.78rem;}
+
+  /* Sondage / vote */
+  .vote-row{
+    padding:9px 4px;border-bottom:1px solid var(--line);
+  }
+  .vote-row:last-child{border-bottom:none;}
+  .vote-row-top{display:flex;align-items:center;gap:10px;}
+  .vote-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;}
+  .vote-row .vote-title{flex:1;font-size:0.92rem;}
+  .vote-row .vote-meta{color:var(--ink-dim);font-size:0.78rem;font-family:'Courier New',monospace;}
+  .vote-row .vote-resume{color:var(--ink-dim);font-size:0.8rem;line-height:1.4;margin:6px 0 0 28px;}
+  .vote-row .video-link{margin:6px 0 0 28px;display:inline-flex;}
+  .vote-img{width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block;}
+
+  .vote-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;
+  }
+  .vote-card{
+    display:block;position:relative;cursor:pointer;
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;transition:border-color .2s, box-shadow .2s;
+  }
+  .vote-card:hover{border-color:var(--accent-dim);}
+  .vote-card.picked{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .vote-card input[type=checkbox]{
+    position:absolute;top:10px;right:10px;width:20px;height:20px;
+    accent-color:var(--accent);z-index:2;cursor:pointer;
+  }
+  .vote-card-img{width:100%;height:120px;object-fit:cover;display:block;}
+  .vote-card-body{padding:12px 14px;}
+  .vote-card-body h4{margin:0 0 2px 0;font-family:Georgia,serif;font-size:1rem;padding-right:24px;}
+  .vote-card-body .univers{color:var(--gold);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:6px;}
+  .vote-card-body .badges{margin-bottom:6px;}
+  .vote-card-body .resume{
+    font-size:0.8rem;color:var(--ink-dim);line-height:1.4;margin-bottom:6px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .vote-card-body .tags{margin-bottom:6px;}
+  .vote-card-body .note{font-size:0.78rem;color:var(--ink-dim);}
+  .vote-card-body .note b{color:var(--gold);}
+
+  .link-row{display:flex;gap:8px;margin-top:10px;}
+  .link-row input{flex:1;font-family:'Courier New',monospace;font-size:0.82rem;}
+  .copy-btn{
+    background:var(--teal);border:none;color:var(--bg);font-weight:700;
+    padding:9px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;white-space:nowrap;
+  }
+
+  .poll-list-item{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:10px 14px;background:var(--surface-hi);border-radius:8px;margin-bottom:8px;font-size:0.88rem;
+  }
+  .poll-list-item a{color:var(--accent);text-decoration:none;font-weight:600;}
+  .poll-list-item a:hover{text-decoration:underline;}
+
+  .fb-config-panel{background:var(--surface-hi);border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+  .fb-config-panel input{margin-bottom:8px;}
+  .fb-status-ok{color:var(--teal);font-size:0.8rem;}
+  .fb-status-bad{color:var(--danger);font-size:0.8rem;}
+
+  #soireeStandalone{max-width:640px;margin:0 auto;padding:24px 20px 60px;}
+  #soireeStandalone h1{font-family:Georgia,serif;font-size:1.6rem;margin:0 0 6px 0;}
+  #soireeStandalone .poll-sub{color:var(--ink-dim);font-size:0.88rem;margin-bottom:20px;}
+</style>
+</head>
+<body>
+<div class="wrap" id="appMain">
+
+  <header class="hero">
+    <div>
+      <h1>Ce soir, on joue à quoi&nbsp;?</h1>
+      <div class="sub">Ludothèque de Julien &mdash; filtrée en temps réel</div>
+    </div>
+    <div class="count-badge" id="headerBadge">
+      <b id="resultCount">0</b>jeu(x) disponible(s)
+    </div>
+  </header>
+
+  <div class="backup-bar">
+    <span class="backup-lbl">&#128190; Sauvegarde locale (parties, config)</span>
+    <button class="reset-btn" id="exportBtn" type="button">Exporter dans un fichier</button>
+    <button class="reset-btn" id="importBtn" type="button">Importer un fichier</button>
+    <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+    <span class="backup-status" id="backupStatus"></span>
+  </div>
+
+  <div class="backup-bar" id="authBar">
+    <span class="backup-lbl">&#128100; Édition des fiches jeux :</span>
+    <span id="authStatus" style="color:var(--ink-dim);font-size:0.85rem;">Non connecté (lecture seule)</span>
+    <button class="reset-btn" id="signInBtn" type="button">Se connecter avec Google</button>
+    <button class="reset-btn" id="signOutBtn" type="button" style="display:none;">Se déconnecter</button>
+  </div>
+  <div class="panel" id="adminUidPanel" style="display:none;">
+    <h2>Configuration admin (une seule fois)</h2>
+    <div class="hint" style="margin-bottom:8px;">
+      Ton UID Firebase : <code id="myUidDisplay" style="background:var(--surface-hi);padding:2px 8px;border-radius:6px;"></code>
+      &mdash; copie-le dans les règles Firestore (remplace <code>ADMIN_UID_HERE</code>) ET colle-le ci-dessous pour que l'appli sache que c'est toi.
+    </div>
+    <div class="frow" style="display:flex;gap:8px;align-items:flex-end;">
+      <input type="text" id="adminUidInput" placeholder="Colle ton UID ici">
+      <button class="save-btn" id="saveAdminUidBtn" type="button" style="flex-shrink:0;">Enregistrer</button>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="choisir" type="button">Choisir un jeu</button>
+    <button class="tab-btn" data-tab="parties" type="button">Mes parties &amp; stats</button>
+    <button class="tab-btn" data-tab="soirees" type="button">Soirées</button>
+  </nav>
+
+  <div class="view active" id="view-choisir">
+
+    <div class="panel">
+      <div class="row">
+        <div class="field">
+          <h2>Nombre de joueurs</h2>
+          <div class="stepper">
+            <button id="pMinus" type="button" aria-label="Moins">&minus;</button>
+            <span class="val" id="pVal">4</span>
+            <button id="pPlus" type="button" aria-label="Plus">+</button>
+            <span class="lbl">joueur(s) ce soir</span>
+          </div>
+          <label class="ext-toggle">
+            <input type="checkbox" id="extToggle" checked>
+            Compter les extensions qui changent le nb de joueurs
+          </label>
+        </div>
+        <div class="field">
+          <h2>Temps disponible</h2>
+          <div class="range-val" style="margin-bottom:2px;">Mini : <span id="timeMinVal">0</span> min</div>
+          <input type="range" id="timeRangeMin" min="0" max="240" step="5" value="0">
+          <div class="range-val" style="margin-top:8px;">Maxi : <span id="timeVal">90</span> min</div>
+          <input type="range" id="timeRange" min="10" max="240" step="5" value="90">
+        </div>
+        <div class="field">
+          <h2>Recherche</h2>
+          <input type="text" class="searchbox" id="searchBox" placeholder="Titre ou univers...">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <div class="field" style="flex:1.4;">
+          <h2>Univers / thème d'ambiance</h2>
+          <div class="chips" id="themeChips"></div>
+        </div>
+        <div class="field" style="flex:1.4;">
+          <h2>Mécaniques</h2>
+          <div class="chips" id="mecChips"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="reset-btn" id="resetBtn" type="button">Réinitialiser les filtres</button>
+        <button class="add-btn" id="openAddBtn" type="button">+ Ajouter un jeu</button>
+        <button class="reset-btn" id="restoreBtn" type="button" style="display:none;"></button>
+      </div>
+      <button class="draw-btn" id="drawBtn" type="button">
+        <span class="die" id="dieIcon">&#127922;</span> Piocher un jeu au hasard
+      </button>
+    </div>
+
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="emptyState" style="display:none;">
+      <div class="big">&#127922;</div>
+      Aucun jeu ne correspond à ces filtres.<br>Essaie d'élargir le temps de jeu ou de retirer un filtre.
+    </div>
+  </div>
+
+  <div class="view" id="view-parties">
+
+    <div class="stat-cards" id="statCards"></div>
+
+    <div class="panel">
+      <h2>Classement des joueurs</h2>
+      <table class="stat-table" id="playerTable"></table>
+    </div>
+
+    <div class="row">
+      <div class="panel field" style="min-width:280px;">
+        <h2>Jeux les plus joués</h2>
+        <div id="topGamesBars"></div>
+      </div>
+      <div class="panel field" style="min-width:280px;">
+        <h2>Parties par nombre de joueurs</h2>
+        <div id="playerCountBars"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Jeux jamais joués (backlog)</h2>
+      <span class="collapsible-toggle" id="neverPlayedToggle">Afficher / masquer</span>
+      <div class="never-played-list" id="neverPlayedList" style="display:none;"></div>
+    </div>
+
+    <div class="toolbar">
+      <h2 style="margin:0;">Historique des parties</h2>
+      <button class="add-btn" id="openSessionBtn" type="button">+ Enregistrer une partie</button>
+    </div>
+    <div id="sessionList"></div>
+    <div class="empty" id="sessionEmpty" style="display:none;">
+      <div class="big">&#128202;</div>
+      Aucune partie enregistrée pour l'instant.
+    </div>
+  </div>
+
+  <div class="view" id="view-soirees">
+    <div class="panel" id="fbConfigPanel">
+      <h2>Connexion à la base partagée (Firebase)</h2>
+      <div id="fbConfigForm">
+        <div class="hint" style="margin-bottom:10px;">
+          Nécessaire une seule fois pour que les votes de tout le monde se retrouvent au même endroit.
+          <span class="collapsible-toggle" id="fbHelpToggle">Voir comment récupérer ces informations</span>
+        </div>
+        <div class="fb-config-panel" id="fbHelpText" style="display:none;">
+          1. Va sur <a href="https://console.firebase.google.com/" target="_blank" style="color:var(--accent);">console.firebase.google.com</a>, crée un projet (gratuit, sans carte bancaire).<br>
+          2. Dans le projet : <b>Firestore Database</b> &rarr; Créer une base &rarr; mode production, choisis une région proche.<br>
+          3. Dans <b>Règles</b> de Firestore, remplace le contenu par :<br>
+          <code style="display:block;background:var(--surface);padding:8px;border-radius:6px;margin:6px 0;font-size:0.78rem;white-space:pre;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /soirees/{eventId} {
+      allow read, write: if true;
+    }
+    match /appdata/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == 'TON_UID_ICI';
+    }
+  }
+}</code>
+          4. Dans <b>Paramètres du projet</b> (icône engrenage) &rarr; onglet Général &rarr; section "Vos applications" &rarr; clique l'icône Web (&lt;/&gt;) &rarr; donne un nom &rarr; copie les valeurs affichées ci-dessous.
+        </div>
+        <div class="frow"><label for="fb-apiKey">apiKey</label><input type="text" id="fb-apiKey"></div>
+        <div class="frow"><label for="fb-authDomain">authDomain</label><input type="text" id="fb-authDomain"></div>
+        <div class="frow"><label for="fb-projectId">projectId</label><input type="text" id="fb-projectId"></div>
+        <div class="frow"><label for="fb-storageBucket">storageBucket</label><input type="text" id="fb-storageBucket"></div>
+        <div class="frow"><label for="fb-messagingSenderId">messagingSenderId</label><input type="text" id="fb-messagingSenderId"></div>
+        <div class="frow"><label for="fb-appId">appId</label><input type="text" id="fb-appId"></div>
+        <button class="save-btn" id="fbSaveBtn" type="button">Enregistrer la connexion</button>
+        <span id="fbStatus" style="margin-left:10px;"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="soireesCreatePanel" style="display:none;">
+      <h2>Organiser une nouvelle soirée</h2>
+      <div class="frow">
+        <label for="sv-title">Titre</label>
+        <input type="text" id="sv-title" placeholder="Ex. Soirée jeux de septembre">
+      </div>
+      <button class="save-btn" id="createSoireeBtn" type="button">Créer la soirée</button>
+      <div class="hint" style="margin-top:10px;">Une fois créée, ouvre le lien pour ajouter les invités, proposer des dates, puis des jeux &mdash; tout se passe au même endroit, étape par étape.</div>
+    </div>
+
+    <div class="panel" id="soireesLoginHint" style="display:none;">
+      <div class="hint">Connecte-toi avec Google (bandeau tout en haut de la page) pour créer et organiser une soirée.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Tes soirées</h2>
+      <div id="soireesList"><div style="color:var(--ink-dim);font-size:0.85rem;">Aucune soirée créée pour l'instant.</div></div>
+    </div>
+  </div>
+
+  <footer>65 jeux jouables (extensions et accessoires exclus &mdash; ils ont besoin de leur boîte de base).</footer>
+</div>
+
+<div id="soireeStandalone" style="display:none;">
+  <h1 id="sv-pageTitle">Soirée</h1>
+  <div class="poll-sub" id="sv-pageSub"></div>
+
+  <div class="panel" id="sv-loading">Chargement...</div>
+  <div class="panel" id="sv-error" style="display:none;color:var(--danger);"></div>
+
+  <div id="sv-content" style="display:none;">
+
+    <!-- Admin-only: guests & link sharing, always visible regardless of stage -->
+    <div class="panel" id="sv-adminGuestsPanel" style="display:none;">
+      <h2>Invités</h2>
+      <div id="sv-guestList"></div>
+      <div class="add-guest-row">
+        <input type="text" id="sv-guestName" placeholder="Nom">
+        <input type="text" id="sv-guestContact" placeholder="Contact (optionnel)">
+        <button class="reset-btn" id="sv-addGuestBtn" type="button">+ Ajouter</button>
+      </div>
+      <div class="link-row">
+        <input type="text" id="sv-shareLink" readonly>
+        <button class="copy-btn" id="sv-copyLinkBtn" type="button">Copier le lien</button>
+      </div>
+      <div class="hint" style="margin-top:8px;">Ce même lien sert à toutes les étapes &mdash; envoie-le une seule fois.</div>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+        <button class="reset-btn" id="sv-enableNotifBtn" type="button">&#128276; Activer les notifications de vote</button>
+        <div class="hint" id="sv-notifStatus" style="margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <!-- Stage: dates -->
+    <div id="sv-stageDates" style="display:none;">
+      <div class="panel" id="sv-adminDatesPanel" style="display:none;">
+        <h2>Étape 1 &middot; Proposer des dates</h2>
+        <div class="mini-cal">
+          <div class="mini-cal-head">
+            <button class="reset-btn" id="sv-calPrev" type="button">&lsaquo;</button>
+            <span id="sv-calMonthLabel"></span>
+            <button class="reset-btn" id="sv-calNext" type="button">&rsaquo;</button>
+          </div>
+          <div class="mini-cal-grid" id="sv-calGrid"></div>
+        </div>
+        <div class="hint" style="margin-top:10px;">Clique sur les jours qui pourraient convenir.</div>
+        <div class="chips" id="sv-selectedDatesChips" style="margin-top:8px;"></div>
+        <button class="save-btn" id="sv-publishDatesBtn" type="button" style="margin-top:16px;display:block;">Publier ces dates au vote</button>
+      </div>
+
+      <div class="panel" id="sv-dateVotePanel" style="display:none;">
+        <h2>Tes disponibilités</h2>
+        <div class="frow">
+          <label for="sv-voterName">Ton prénom</label>
+          <input type="text" id="sv-voterName" placeholder="Ex. Julien">
+        </div>
+        <div class="hint" style="margin-bottom:10px;">Coche toutes les dates où tu es dispo.</div>
+        <div id="sv-dateChecklist"></div>
+        <button class="save-btn" id="sv-submitDateVoteBtn" type="button" style="margin-top:16px;">Voter / mettre à jour</button>
+        <span id="sv-dateVoteStatus" style="margin-left:10px;color:var(--teal);font-size:0.85rem;"></span>
+      </div>
+
+      <div class="panel" id="sv-dateResultsPanel" style="display:none;">
+        <div class="toolbar" style="margin-bottom:10px;">
+          <h2 style="margin:0;">Résultats en direct</h2>
+          <button class="reset-btn" id="sv-refreshDatesBtn" type="button">Actualiser</button>
+        </div>
+        <div id="sv-dateResults"></div>
+        <div class="hint" id="sv-dateVoterCount" style="margin-top:10px;"></div>
+        <div id="sv-validateDateRow" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Stage: game -->
+    <div id="sv-stageGame" style="display:none;">
+      <div class="panel">
+        <h2 style="margin-bottom:6px;">Date retenue</h2>
+        <div id="sv-chosenDateDisplay" style="font-family:Georgia,serif;font-size:1.15rem;color:var(--gold);"></div>
+        <a id="sv-gcalLink" href="#" target="_blank" class="reset-btn" style="display:inline-block;margin-top:10px;text-decoration:none;">&#128197; Ajouter à Google Agenda</a>
+      </div>
+
+      <div class="panel" id="sv-adminGamePanel" style="display:none;">
+        <h2>Étape 2 &middot; Proposer des jeux</h2>
+        <div class="hint" id="sv-guestCountHint" style="margin-bottom:12px;"></div>
+        <div class="row">
+          <div class="field">
+            <h2 style="margin-bottom:8px;">Nombre de joueurs</h2>
+            <div class="stepper">
+              <button id="sv-pMinus" type="button">&minus;</button>
+              <span class="val" id="sv-pVal">4</span>
+              <button id="sv-pPlus" type="button">+</button>
+            </div>
+            <label class="ext-toggle">
+              <input type="checkbox" id="sv-extToggle" checked>
+              Compter les extensions
+            </label>
+          </div>
+          <div class="field">
+            <h2 style="margin-bottom:8px;">Temps disponible</h2>
+            <div class="range-val" style="margin-bottom:2px;">Mini : <span id="sv-timeMinVal">0</span> min</div>
+            <input type="range" id="sv-timeRangeMin" min="0" max="240" step="5" value="0">
+            <div class="range-val" style="margin-top:8px;">Maxi : <span id="sv-timeVal">90</span> min</div>
+            <input type="range" id="sv-timeRange" min="10" max="240" step="5" value="90">
+          </div>
+        </div>
+        <div class="frow" style="margin-top:14px;">
+          <label for="sv-gameSearch">Filtrer par titre (optionnel)</label>
+          <input type="text" class="searchbox" id="sv-gameSearch" placeholder="Rechercher un jeu...">
+        </div>
+        <div class="frow">
+          <label>Mécaniques (optionnel)</label>
+          <div class="chips" id="sv-mecChips"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+          <span class="hint" id="sv-gameChecklistCount"></span>
+          <div style="display:flex;gap:8px;">
+            <button class="reset-btn" id="sv-checkAllBtn" type="button">Tout cocher</button>
+            <button class="reset-btn" id="sv-uncheckAllBtn" type="button">Tout décocher</button>
+          </div>
+        </div>
+        <div id="sv-gameChecklist" style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:8px;"></div>
+        <button class="save-btn" id="sv-publishGamesBtn" type="button" style="margin-top:16px;">Publier ces jeux au vote</button>
+      </div>
+
+      <div class="panel" id="sv-gameVotePanel" style="display:none;">
+        <h2>Ton vote</h2>
+        <div class="frow">
+          <label for="sv-gameVoterName">Ton prénom</label>
+          <input type="text" id="sv-gameVoterName" placeholder="Ex. Julien">
+        </div>
+        <div class="hint" style="margin-bottom:10px;">Coche tous les jeux qui te vont.</div>
+        <div id="sv-gameVoteChecklist"></div>
+        <button class="save-btn" id="sv-submitGameVoteBtn" type="button" style="margin-top:16px;">Voter / mettre à jour</button>
+        <span id="sv-gameVoteStatus" style="margin-left:10px;color:var(--teal);font-size:0.85rem;"></span>
+      </div>
+
+      <div class="panel" id="sv-gameResultsPanel" style="display:none;">
+        <div class="toolbar" style="margin-bottom:10px;">
+          <h2 style="margin:0;">Résultats en direct</h2>
+          <button class="reset-btn" id="sv-refreshGamesBtn" type="button">Actualiser</button>
+        </div>
+        <div id="sv-gameResults"></div>
+        <div class="hint" id="sv-gameVoterCount" style="margin-top:10px;"></div>
+        <div id="sv-validateGameRow" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Stage: done -->
+    <div id="sv-stageDone" style="display:none;">
+      <div class="panel" style="text-align:center;padding:40px 20px;">
+        <div style="font-size:2.4rem;margin-bottom:10px;">&#127881;</div>
+        <div style="font-family:Georgia,serif;font-size:1.3rem;margin-bottom:6px;" id="sv-doneSummary"></div>
+        <div class="hint" id="sv-doneGuests"></div>
+        <a id="sv-gcalLinkDone" href="#" target="_blank" class="reset-btn" style="display:inline-block;margin-top:14px;text-decoration:none;">&#128197; Ajouter à Google Agenda</a>
+        <button class="reset-btn" id="sv-reopenGameBtn" type="button" style="display:none;margin-top:10px;">Rouvrir le vote jeu</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Ajouter un jeu</h2>
+    <div class="sub" id="modalSub">Il n'est pas encore dans ta ludothèque myludo ? Ajoute-le juste ici, il restera enregistré dans ce navigateur.</div>
+
+    <div class="frow">
+      <label for="f-titre">Titre *</label>
+      <input type="text" id="f-titre" placeholder="Ex. Sky Team">
+    </div>
+    <div class="frow">
+      <label for="f-univers">Univers (optionnel)</label>
+      <input type="text" id="f-univers" placeholder="Ex. Cthulhu, Star Wars...">
+    </div>
+    <div class="two-col">
+      <div class="frow">
+        <label for="f-pmin">Joueurs min (boîte de base) *</label>
+        <input type="number" id="f-pmin" min="1" max="20" value="2">
+      </div>
+      <div class="frow">
+        <label for="f-pmax">Joueurs max (boîte de base) *</label>
+        <input type="number" id="f-pmax" min="1" max="20" value="4">
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="frow">
+        <label for="f-pmin-ext">Joueurs min avec extensions</label>
+        <input type="number" id="f-pmin-ext" min="1" max="20" value="2">
+      </div>
+      <div class="frow">
+        <label for="f-pmax-ext">Joueurs max avec extensions</label>
+        <input type="number" id="f-pmax-ext" min="1" max="20" value="4">
+      </div>
+    </div>
+    <div class="hint" style="margin:-8px 0 14px;">Laisse identique à la boîte de base si aucune extension ne change le nombre de joueurs.</div>
+    <div class="two-col">
+      <div class="frow">
+        <label for="f-dmin">Durée min (min) *</label>
+        <input type="number" id="f-dmin" min="5" max="600" step="5" value="30">
+      </div>
+      <div class="frow">
+        <label for="f-dmax">Durée max (min) *</label>
+        <input type="number" id="f-dmax" min="5" max="600" step="5" value="60">
+      </div>
+    </div>
+    <div class="frow">
+      <label for="f-age">Âge minimum (optionnel)</label>
+      <input type="text" id="f-age" placeholder="Ex. 10+">
+    </div>
+    <div class="frow">
+      <label for="f-themes">Thèmes / univers d'ambiance (optionnel)</label>
+      <input type="text" id="f-themes" placeholder="Sépare par des virgules : Fantastique, Horreur...">
+      <div class="hint">Ces mots-clés servent aux filtres de la page.</div>
+    </div>
+    <div class="frow">
+      <label for="f-mecs">Mécaniques (optionnel)</label>
+      <input type="text" id="f-mecs" placeholder="Sépare par des virgules : Coopération, Draft...">
+    </div>
+    <div class="frow">
+      <label for="f-resume">Résumé (optionnel)</label>
+      <textarea id="f-resume" placeholder="En 2-3 phrases : l'univers, le principe du jeu, l'ambiance..."></textarea>
+    </div>
+    <div class="frow">
+      <label for="f-video">Lien vidéo règles (optionnel)</label>
+      <input type="text" id="f-video" placeholder="https://youtube.com/...">
+    </div>
+    <div class="frow">
+      <label for="f-image">Image (lien URL, optionnel)</label>
+      <input type="text" id="f-image" placeholder="https://...jpg (photo de la boîte, illustration...)">
+      <img id="f-image-preview" style="display:none;width:100%;height:120px;object-fit:cover;border-radius:8px;margin-top:8px;" alt="">
+      <div class="hint" id="f-image-status" style="margin-top:4px;"></div>
+    </div>
+
+    <div class="error" id="formError">Le titre, les joueurs et la durée sont obligatoires (et min &le; max).</div>
+
+    <div class="actions">
+      <button class="cancel-btn" id="cancelAddBtn" type="button">Annuler</button>
+      <button class="save-btn" id="saveAddBtn" type="button">Ajouter à la ludothèque</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sessionModalOverlay">
+  <div class="modal">
+    <h2 id="sessionModalTitle">Enregistrer une partie</h2>
+    <div class="sub">Renseigne la partie jouée, les joueurs et qui a gagné.</div>
+
+    <div class="frow">
+      <label for="s-game">Jeu *</label>
+      <input type="text" id="s-game" list="gameTitleList" placeholder="Titre du jeu">
+      <datalist id="gameTitleList"></datalist>
+    </div>
+    <div class="two-col">
+      <div class="frow">
+        <label for="s-date">Date *</label>
+        <input type="date" id="s-date">
+      </div>
+      <div class="frow">
+        <label for="s-duration">Durée réelle (min, optionnel)</label>
+        <input type="number" id="s-duration" min="1" max="600">
+      </div>
+    </div>
+    <div class="frow">
+      <label for="s-players">Joueurs * (séparés par des virgules)</label>
+      <input type="text" id="s-players" placeholder="Ex. Julien, Marie, Léo">
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="s-coop">
+      <label for="s-coop">Partie coopérative (tous gagnent ou tous perdent ensemble)</label>
+    </div>
+    <div class="frow" id="s-outcome-row" style="display:none;">
+      <label for="s-outcome">Résultat</label>
+      <select id="s-outcome">
+        <option value="win">Victoire de l'équipe</option>
+        <option value="lose">Défaite de l'équipe</option>
+      </select>
+    </div>
+    <div class="frow" id="s-winners-row">
+      <label for="s-winners">Gagnant(s) * (séparés par des virgules, parmi les joueurs)</label>
+      <input type="text" id="s-winners" placeholder="Ex. Julien">
+    </div>
+    <div class="frow">
+      <label for="s-notes">Notes (optionnel)</label>
+      <textarea id="s-notes" placeholder="Score final, anecdotes, retournement de situation..."></textarea>
+    </div>
+
+    <div class="error" id="sessionFormError">Le jeu, la date et au moins un joueur sont obligatoires.</div>
+
+    <div class="actions">
+      <button class="cancel-btn" id="cancelSessionBtn" type="button">Annuler</button>
+      <button class="save-btn" id="saveSessionBtn" type="button">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAMES = [{"id": 1616, "titre": "Abyss", "univers": "Abyss", "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 45, "dmax": 45, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de plateau"], "themes": ["Fantastique", "Maritime", "Mythologie", "Océan", "Science-fiction"], "mecanismes": ["Collection", "Combinaison", "Enchères", "Gestion de main", "Pioche", "Pouvoir", "Stop ou encore"], "editeurs": ["Bombyx"], "note": 8.0, "ext_notes": []}, {"id": 60372, "titre": "Batman - Livre de base", "univers": "Batman", "pmin": 2, "pmax": 6, "pmin_ext": 2, "pmax_ext": 6, "dmin": 180, "dmax": 999, "age": "14+", "categories": ["Jeu De Rôle"], "themes": ["Comics", "Super-héros"], "mecanismes": ["Chance & Hasard", "Coopération", "Jet De Dés", "Narration", "Papier & Crayon", "Roleplay", "Scénarios"], "editeurs": ["Black Book Editions", "Monolith"], "note": 7.7, "ext_notes": []}, {"id": 20005, "titre": "Batman Gotham City Chronicles", "univers": "Batman", "pmin": 2, "pmax": 5, "pmin_ext": 1, "pmax_ext": 5, "dmin": 60, "dmax": 60, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Comics", "Super-héros"], "mecanismes": ["Équipes", "Exploration", "Gestion"], "editeurs": ["Monolith"], "note": 8.3, "ext_notes": ["Gotham City Chronicles - A New Eden"]}, {"id": 43904, "titre": "Blood Bowl - Boite de Base", "univers": "Warhammer", "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 60, "dmax": 60, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Sports"], "mecanismes": ["Affrontement Direct"], "editeurs": ["Games Workshop"], "note": 8.6, "ext_notes": []}, {"id": 40112, "titre": "Capitaine Vaudou", "univers": "Capitaine Vaudou", "pmin": 2, "pmax": 99, "pmin_ext": 2, "pmax_ext": 99, "dmin": 120, "dmax": 999, "age": "12+", "categories": ["Jeu De Rôle"], "themes": ["Fantastique", "Magie & Sorcellerie", "Pirates", "Vaudou"], "mecanismes": ["Campagne", "Chance & Hasard", "Coopération", "Jet De Dés", "Narration", "Roleplay", "Scénarios"], "editeurs": ["Black Book Editions", "Monolith"], "note": 8.2, "ext_notes": []}, {"id": 19557, "titre": "Citadelles", "univers": null, "pmin": 2, "pmax": 7, "pmin_ext": 2, "pmax_ext": 7, "dmin": 30, "dmax": 60, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Bluff", "Choix multiples", "Choix simultanés", "Construction", "Draft", "Gestion de main", "Pouvoir"], "editeurs": ["Edge Entertainment"], "note": 7.4, "ext_notes": []}, {"id": 24019, "titre": "Claustrophobia : 1643", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 60, "dmax": 120, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Fantastique", "Horreur", "Labyrinthe", "Médiéval", "Monstres & Créatures"], "mecanismes": ["Affrontement Direct", "Chance & Hasard", "Exploration", "Jet De Dés", "Placement de tuiles", "Plateau modulaire", "Points d'action", "Programmation"], "editeurs": ["Monolith"], "note": 8.4, "ext_notes": []}, {"id": 913, "titre": "Conan - Boîte King", "univers": "Conan", "pmin": 2, "pmax": 5, "pmin_ext": 2, "pmax_ext": 5, "dmin": 60, "dmax": 90, "age": "14+", "categories": ["Jeu de figurines"], "themes": ["Fantastique", "Médiéval"], "mecanismes": ["Affrontement Direct", "Chance & Hasard", "Déplacement", "Jet De Dés", "Points d'action", "Semi-coopération"], "editeurs": ["Monolith"], "note": 7.9, "ext_notes": []}, {"id": 93743, "titre": "Cozy Stickerville", "univers": null, "pmin": 1, "pmax": 6, "pmin_ext": 1, "pmax_ext": 6, "dmin": 30, "dmax": 60, "age": "8+", "categories": ["Jeu de plateau", "Jeu Legacy"], "themes": ["Urbanisme", "Vie quotidienne", "Ville"], "mecanismes": ["Campagne", "Coopération", "Scénarios"], "editeurs": ["Unexpected Games"], "note": 8.5, "ext_notes": []}, {"id": 50124, "titre": "Descent", "univers": "Descent", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 120, "dmax": 180, "age": "14+", "categories": ["Jeu de figurines"], "themes": ["Exploration", "Magie & Sorcellerie", "Médiéval Fantastique"], "mecanismes": ["Coopération", "Exploration", "Plateau modulaire", "Roleplay", "Scénarios"], "editeurs": ["Fantasy Flight Games"], "note": 8.5, "ext_notes": []}, {"id": 48658, "titre": "Dice Throne - Barbare vs Elfe Lunaire", "univers": null, "pmin": 2, "pmax": 6, "pmin_ext": 2, "pmax_ext": 6, "dmin": 20, "dmax": 40, "age": "8+", "categories": ["Jeu de Cartes", "Jeu de dés"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Affrontement Direct", "Asymétrie", "Combinaison", "Dans Ta Face", "Gestion de main", "Jet De Dés", "Pouvoir"], "editeurs": ["Lucky Duck Games"], "note": 8.0, "ext_notes": []}, {"id": 70242, "titre": "Dice Throne - Père Noël vs Krampus", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 30, "dmax": 30, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de dés"], "themes": ["Fantastique", "Monstres & Créatures", "Noël"], "mecanismes": ["Affrontement Direct", "Asymétrie", "Combinaison", "Dans Ta Face", "Gestion de main", "Jet De Dés", "Pouvoir"], "editeurs": ["Lucky Duck Games"], "note": 8.2, "ext_notes": []}, {"id": 61463, "titre": "Dice Throne - Pirate Maudite vs Artificier", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 60, "dmax": 120, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de dés"], "themes": ["Aventure", "Fantastique"], "mecanismes": ["Affrontement Direct", "Asymétrie", "Coopération", "Jet De Dés", "Pouvoir"], "editeurs": ["Lucky Duck Games"], "note": 8.4, "ext_notes": []}, {"id": 62013, "titre": "Dice Throne - Séraphine vs Reine Vampire", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 60, "dmax": 120, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de dés"], "themes": ["Aventure", "Fantastique"], "mecanismes": ["Affrontement Direct", "Asymétrie", "Coopération", "Jet De Dés", "Pouvoir"], "editeurs": ["Lucky Duck Games"], "note": 8.4, "ext_notes": []}, {"id": 48657, "titre": "Dice Throne - Tréant vs Ninja", "univers": null, "pmin": 2, "pmax": 6, "pmin_ext": 2, "pmax_ext": 6, "dmin": 20, "dmax": 40, "age": "8+", "categories": ["Jeu de Cartes", "Jeu de dés"], "themes": ["Médiéval Fantastique", "Ninjas"], "mecanismes": ["Affrontement Direct", "Asymétrie", "Combinaison", "Dans Ta Face", "Gestion de main", "Jet De Dés", "Pouvoir"], "editeurs": ["Lucky Duck Games"], "note": 8.1, "ext_notes": []}, {"id": 74438, "titre": "Etherstone", "univers": null, "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 60, "age": "14+", "categories": ["Jeu de Cartes"], "themes": ["Fantasy"], "mecanismes": ["Draft", "Gestion de main"], "editeurs": ["Thundergryph Games"], "note": 7.6, "ext_notes": []}, {"id": 44, "titre": "Exodus", "univers": "Seeders From Sereis", "pmin": 2, "pmax": 4, "pmin_ext": 1, "pmax_ext": 5, "dmin": 120, "dmax": 120, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de plateau"], "themes": ["Science-fiction"], "mecanismes": ["Affrontement Direct", "Combinaison", "Construction", "Gestion", "Majorité"], "editeurs": ["Sweet November"], "note": 8.2, "ext_notes": ["Exodus - Étho"]}, {"id": 65717, "titre": "Final Girl - Boîte de base", "univers": null, "pmin": 1, "pmax": 1, "pmin_ext": 1, "pmax_ext": 1, "dmin": 30, "dmax": 60, "age": "14+", "categories": ["Jeu de dés"], "themes": ["Horreur"], "mecanismes": ["Gestion", "Jet De Dés", "Pouvoir"], "editeurs": ["Don't Panic Games", "Van Ryder Games"], "note": 8.2, "ext_notes": []}, {"id": 1581, "titre": "Five Tribes", "univers": "Les Mille Et Une Nuits", "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 40, "dmax": 80, "age": "13+", "categories": ["Jeu de plateau"], "themes": ["Commerce", "Contes", "Désert", "Moyen-Orient", "Mythologie"], "mecanismes": ["Collection", "Combinaison", "Majorité", "Plateau modulaire", "Semaille"], "editeurs": ["Days Of Wonder"], "note": 8.3, "ext_notes": []}, {"id": 69457, "titre": "Forêt Mixte", "univers": "Forêt Mixte", "pmin": 2, "pmax": 5, "pmin_ext": 1, "pmax_ext": 5, "dmin": 45, "dmax": 45, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Animaux", "Nature"], "mecanismes": ["Collection", "Combinaison", "Gestion"], "editeurs": ["Lookout Games"], "note": 8.2, "ext_notes": ["Forêt Mixte - Exploration"]}, {"id": 90273, "titre": "Gloomhaven - Boutons & Bestioles", "univers": null, "pmin": 1, "pmax": 1, "pmin_ext": 1, "pmax_ext": 1, "dmin": 20, "dmax": 20, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Campagne", "Coopération", "Gestion de main", "hexagones", "Narration", "Scénarios"], "editeurs": ["Cephalofair Games"], "note": 7.6, "ext_notes": []}, {"id": 37211, "titre": "Hagakure", "univers": null, "pmin": 3, "pmax": 5, "pmin_ext": 3, "pmax_ext": 5, "dmin": 25, "dmax": 25, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Japon", "Japon Féodal", "Samuraïs"], "mecanismes": ["Gestion de main", "Plis", "Pouvoir"], "editeurs": ["Studio H"], "note": 6.5, "ext_notes": []}, {"id": 41745, "titre": "Happy City", "univers": null, "pmin": 2, "pmax": 5, "pmin_ext": 2, "pmax_ext": 5, "dmin": 30, "dmax": 30, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Construction", "Ville"], "mecanismes": ["Gestion de ressources", "Stratégie"], "editeurs": ["Cocktail Games"], "note": 7.1, "ext_notes": []}, {"id": 35712, "titre": "Hybris - Disordered Cosmos", "univers": "Hybris", "pmin": 2, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 45, "dmax": 180, "age": "12+", "categories": ["Jeu de plateau"], "themes": ["Mythologie", "Steampunk"], "mecanismes": ["Combinaison", "Draft", "Gestion de main", "Placement d'ouvriers", "Pouvoir"], "editeurs": ["Aurora Game Studio"], "note": 8.5, "ext_notes": ["Hybris - Disordered Cosmos - Amour & Haine"]}, {"id": 20799, "titre": "Immortal 8", "univers": "Immortal 8", "pmin": 3, "pmax": 6, "pmin_ext": 3, "pmax_ext": 6, "dmin": 45, "dmax": 45, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Fantastique", "Médiéval"], "mecanismes": ["Combinaison", "Draft", "Majorité"], "editeurs": ["Sorry We Are French"], "note": 7.1, "ext_notes": []}, {"id": 77705, "titre": "Iss Vanguard", "univers": null, "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 180, "dmax": 240, "age": "14+", "categories": ["Jeu de figurines", "Jeu de plateau"], "themes": ["Espace", "Science-fiction"], "mecanismes": ["Campagne", "Coopération", "Exploration", "Jet De Dés"], "editeurs": ["Awaken Realms"], "note": 8.5, "ext_notes": []}, {"id": 29890, "titre": "Kami", "univers": null, "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 30, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Asie", "Japon"], "mecanismes": ["Affrontement Direct", "Gestion de main", "Plis"], "editeurs": ["Art&Bear", "Oka Luda"], "note": 7.6, "ext_notes": []}, {"id": 70687, "titre": "L'Ordre de Veiel - Deck Building Tactique", "univers": null, "pmin": 1, "pmax": 5, "pmin_ext": 1, "pmax_ext": 5, "dmin": 60, "dmax": 60, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Affrontement Direct", "Choix simultanés", "Coopération", "Deck building", "Équipes", "Roleplay", "Stratégie"], "editeurs": ["Paria"], "note": 8.4, "ext_notes": []}, {"id": 26678, "titre": "La Petite Mort", "univers": "La Petite Mort", "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 30, "age": "14+", "categories": ["Jeu de Cartes"], "themes": ["Bande dessinée", "Horreur", "Humour", "Monstres & Créatures"], "mecanismes": ["Gestion de main", "Simultanéité"], "editeurs": ["Lumberjacks Studio"], "note": 6.8, "ext_notes": []}, {"id": 63295, "titre": "La quête du Graal", "univers": "Légende Arthurienne", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 25, "dmax": 25, "age": "8+", "categories": ["Jeu de Cartes"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Coopération", "Prise de risque"], "editeurs": ["La Toile Ludique Rennaise"], "note": 8.1, "ext_notes": []}, {"id": 29240, "titre": "Love Letter", "univers": null, "pmin": 2, "pmax": 6, "pmin_ext": 2, "pmax_ext": 6, "dmin": 15, "dmax": 15, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Historique", "Médiéval", "Princesses & Princes", "Royauté"], "mecanismes": ["Bluff", "Déduction", "Élimination", "Gestion de main", "Pouvoir", "Rôle secret"], "editeurs": ["Z-Man Games"], "note": 8.1, "ext_notes": []}, {"id": 62707, "titre": "Mindbug", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 20, "dmax": 20, "age": "8+", "categories": ["Jeu de Cartes"], "themes": ["Animaux", "Fantastique", "Humour", "Monstres & Créatures"], "mecanismes": ["Affrontement Direct", "Bluff", "Gestion de main"], "editeurs": ["Iello", "Nerdlab Games"], "note": 7.5, "ext_notes": []}, {"id": 63967, "titre": "Mino Dice", "univers": null, "pmin": 3, "pmax": 6, "pmin_ext": 3, "pmax_ext": 6, "dmin": 30, "dmax": 30, "age": "8+", "categories": ["Jeu de dés"], "themes": ["Grèce", "Mythologie"], "mecanismes": ["Chance & Hasard", "Combinaison", "Jet De Dés", "Plis", "Prise de risque"], "editeurs": ["Iello"], "note": 7.4, "ext_notes": []}, {"id": 93758, "titre": "Moon Colony Bloodbath", "univers": null, "pmin": 1, "pmax": 5, "pmin_ext": 1, "pmax_ext": 5, "dmin": 45, "dmax": 90, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Absurde", "Construction", "Espace", "Humour", "Survie"], "mecanismes": ["Deck building", "Gestion"], "editeurs": ["Rio Grande Games"], "note": 7.8, "ext_notes": []}, {"id": 40764, "titre": "Northgard", "univers": null, "pmin": 2, "pmax": 5, "pmin_ext": 2, "pmax_ext": 5, "dmin": 60, "dmax": 90, "age": "13+", "categories": ["4X", "Jeu de plateau"], "themes": ["Fantastique", "Jeu vidéo", "Médiéval", "Vikings"], "mecanismes": ["Conquête", "Deck building", "Jet De Dés", "Placement de tuiles", "Plateau modulaire", "Pouvoir"], "editeurs": ["Open Sesame Games", "Shiro Games"], "note": 7.9, "ext_notes": []}, {"id": 29720, "titre": "Paladins du Royaume de l'Ouest", "univers": "Trilogie du Royaume de l'Ouest", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 90, "dmax": 120, "age": "12+", "categories": ["Jeu de plateau"], "themes": ["Chevalerie", "Médiéval", "Ville"], "mecanismes": ["Collection", "Construction", "Draft", "Placement d'ouvriers", "Pouvoir"], "editeurs": ["Garphill Games", "Pixie Games"], "note": 8.3, "ext_notes": []}, {"id": 33065, "titre": "Palm Island", "univers": null, "pmin": 1, "pmax": 2, "pmin_ext": 1, "pmax_ext": 2, "dmin": 15, "dmax": 15, "age": "12+", "categories": ["Jeu de Cartes"], "themes": ["Les îles", "Océan", "Ville"], "mecanismes": ["Choix simultanés", "Gestion de main"], "editeurs": ["Nuts! Publishing"], "note": 7.2, "ext_notes": []}, {"id": 35247, "titre": "Papayoo", "univers": null, "pmin": 3, "pmax": 8, "pmin_ext": 3, "pmax_ext": 8, "dmin": 30, "dmax": 60, "age": "7+", "categories": ["Jeu de Cartes"], "themes": ["Chiffres"], "mecanismes": ["Plis"], "editeurs": ["Gigamic"], "note": 7.3, "ext_notes": []}, {"id": 88770, "titre": "Petits Soldats", "univers": null, "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 30, "age": "8+", "categories": ["Wargame"], "themes": ["Guerre", "Jouets"], "mecanismes": ["Affrontement Direct", "Tir à la corde"], "editeurs": ["Iello"], "note": 6.9, "ext_notes": []}, {"id": 78229, "titre": "Regicide", "univers": null, "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 5, "dmax": 20, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Fantastique"], "mecanismes": ["Coopération", "Gestion de main"], "editeurs": ["Badgers from Mars", "Devir", "Iello"], "note": 7.6, "ext_notes": []}, {"id": 31879, "titre": "Roll Player", "univers": "Le monde d'Ulos", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 5, "dmin": 60, "dmax": 90, "age": "10+", "categories": ["Jeu de dés"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Chance & Hasard", "Collection", "Draft", "Gestion", "Placement de dés", "Pouvoir"], "editeurs": ["Intrafin Games"], "note": 7.9, "ext_notes": ["Roll Player - Monstres & Sbires"]}, {"id": 37371, "titre": "Roméo & Juliette", "univers": "Roméo et Juliette", "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 30, "dmax": 30, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de plateau"], "themes": ["Amour", "Littérature", "Renaissance"], "mecanismes": ["Choix multiples", "Communication Restreinte", "Coopération", "Déduction", "Gestion de main", "Narration", "Programmation"], "editeurs": ["Sylex"], "note": 7.0, "ext_notes": []}, {"id": 69684, "titre": "Root", "univers": "Root", "pmin": 1, "pmax": 6, "pmin_ext": 1, "pmax_ext": 6, "dmin": 60, "dmax": 90, "age": "10+", "categories": ["Jeu de plateau"], "themes": ["Animaux", "Fantastique"], "mecanismes": ["Asymétrie", "Conquête", "Contrôle de zone", "Gestion de main", "Jet De Dés", "Majorité", "Mouvement de point à point", "Points d'action"], "editeurs": ["Matagot"], "note": 8.8, "ext_notes": []}, {"id": 7548, "titre": "Rush n' Crush", "univers": null, "pmin": 2, "pmax": 6, "pmin_ext": 2, "pmax_ext": 6, "dmin": 60, "dmax": 60, "age": "12+", "categories": ["Jeu de plateau"], "themes": ["Course", "Fantastique", "Science-fiction", "Sports"], "mecanismes": ["Affrontement Direct", "Course", "Élimination", "Jet De Dés", "Plateau modulaire"], "editeurs": ["Rackham"], "note": 6.1, "ext_notes": []}, {"id": 147, "titre": "Scythe", "univers": "Scythe", "pmin": 1, "pmax": 5, "pmin_ext": 1, "pmax_ext": 7, "dmin": 115, "dmax": 115, "age": "14+", "categories": ["4X", "Jeu de plateau"], "themes": ["Économie", "Guerre", "Industrie", "Steampunk"], "mecanismes": ["Affrontement Direct", "Déplacement", "Exploration", "Placement d'ouvriers", "Plateau modulaire", "Programmation", "Stratégie"], "editeurs": ["Matagot", "Stonemaier Games"], "note": 8.6, "ext_notes": ["Scythe - Conquérants du Lointain"]}, {"id": 59020, "titre": "Sea Salt & Paper", "univers": null, "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 30, "age": "8+", "categories": ["Jeu de Cartes"], "themes": ["Maritime"], "mecanismes": ["Chance & Hasard", "Collection", "Combinaison", "Pioche", "Prise de risque"], "editeurs": ["Bombyx"], "note": 7.9, "ext_notes": []}, {"id": 39297, "titre": "Small World of Warcraft", "univers": "Warcraft", "pmin": 2, "pmax": 5, "pmin_ext": 2, "pmax_ext": 5, "dmin": 40, "dmax": 80, "age": "10+", "categories": ["Jeu de plateau"], "themes": ["Colonisation", "Exploration", "Fantastique", "Jeu vidéo", "Médiéval", "Médiéval Fantastique", "Monstres & Créatures"], "mecanismes": ["Conquête", "Contrôle de zone", "Déplacement", "Jet De Dés", "Majorité", "Négociation", "Pouvoir"], "editeurs": ["Blizzard Entertainment", "Days Of Wonder"], "note": 7.6, "ext_notes": []}, {"id": 6269, "titre": "Space Hulk Death Angel", "univers": "Warhammer 40k", "pmin": 1, "pmax": 6, "pmin_ext": 1, "pmax_ext": 6, "dmin": 50, "dmax": 50, "age": "14+", "categories": ["Jeu de Cartes"], "themes": ["Fantastique", "Guerre", "Horreur", "Monstres & Créatures", "Science-fiction"], "mecanismes": ["Affrontement Direct", "Card-driven", "Choix simultanés", "Coopération", "Gestion de main", "Jet De Dés"], "editeurs": ["Edge Entertainment"], "note": 7.5, "ext_notes": []}, {"id": 29983, "titre": "Spirit Island", "univers": null, "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 90, "dmax": 120, "age": "13+", "categories": ["Jeu de plateau"], "themes": ["Colonisation", "Fantastique", "Les îles"], "mecanismes": ["Asymétrie", "Coopération", "Gestion de main"], "editeurs": ["Intrafin Games"], "note": 8.7, "ext_notes": []}, {"id": 1875, "titre": "Splendor", "univers": null, "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 30, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Commerce", "Pierres Précieuses", "Renaissance"], "mecanismes": ["Blocage", "Combinaison", "Échange & Troc", "Gestion de ressources"], "editeurs": ["Space Cowboys"], "note": 8.0, "ext_notes": []}, {"id": 860, "titre": "Star Realms", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 30, "dmax": 60, "age": "12+", "categories": ["Jeu de Cartes"], "themes": ["Science-fiction"], "mecanismes": ["Affrontement Direct", "Deck building"], "editeurs": ["Iello", "Wise Wizard Games"], "note": 8.0, "ext_notes": []}, {"id": 61243, "titre": "Star Wars - Shatterpoint", "univers": "Star Wars", "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 60, "dmax": 120, "age": "14+", "categories": ["Jeu de figurines"], "themes": ["Espace", "Extraterrestre", "Science-fiction"], "mecanismes": ["Affrontement Direct", "Stratégie"], "editeurs": ["Atomic Mass Games"], "note": 8.2, "ext_notes": []}, {"id": 1144, "titre": "Starfighter", "univers": null, "pmin": 2, "pmax": 2, "pmin_ext": 2, "pmax_ext": 2, "dmin": 30, "dmax": 30, "age": "13+", "categories": ["Jeu de Cartes"], "themes": ["Aviation", "Espace", "Science-fiction"], "mecanismes": ["Affrontement Direct", "Construction De Tableau", "Draft", "Gestion de main", "Programmation"], "editeurs": ["Ystari Games"], "note": 7.1, "ext_notes": []}, {"id": 96213, "titre": "Storyfold", "univers": null, "pmin": 1, "pmax": 1, "pmin_ext": 1, "pmax_ext": 1, "dmin": 30, "dmax": 60, "age": "13+", "categories": ["Jeu de Cartes", "Jeu de plateau"], "themes": ["Animaux", "Arbres", "Aventure", "Dark fantasy", "Fantastique", "Monstres & Créatures", "Oiseaux", "Ours"], "mecanismes": ["Campagne", "Chance & Hasard", "Choix multiples", "Exploration", "Jet De Dés", "Narration", "Pouvoir", "Prise de risque", "Scénarios"], "editeurs": ["Don't Panic Games", "Open Owl Studios", "Ynnis éditions"], "note": 7.9, "ext_notes": []}, {"id": 29888, "titre": "Super Fantasy Brawl", "univers": "Fabulosa", "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 20, "dmax": 45, "age": "10+", "categories": ["Jeu de figurines"], "themes": ["Fantasy"], "mecanismes": ["Affrontement Direct", "Déplacement", "Gestion de main", "Pouvoir", "Programmation"], "editeurs": ["Mythic Games"], "note": 7.9, "ext_notes": []}, {"id": 54137, "titre": "Tainted Grail", "univers": "Légende Arthurienne", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 60, "dmax": 120, "age": "14+", "categories": ["Jeu de Cartes", "Jeu de figurines"], "themes": ["Aventure", "Enquêtes & Mystères", "Exploration", "Fantastique", "Médiéval", "Mythologie", "Transport & voyage"], "mecanismes": ["Affrontement Direct", "Card-driven", "Chance & Hasard", "Coopération", "Deck building", "Déduction", "Exploration", "Narration", "Plateau modulaire", "Prise de risque", "Roleplay", "Scénarios"], "editeurs": ["Awaken Realms", "Edge Entertainment"], "note": 8.4, "ext_notes": []}, {"id": 100, "titre": "Terraforming Mars", "univers": null, "pmin": 1, "pmax": 5, "pmin_ext": 1, "pmax_ext": 5, "dmin": 90, "dmax": 120, "age": "12+", "categories": ["Jeu de plateau"], "themes": ["Climat & Météo", "Colonisation", "Espace", "Mars", "Science-fiction", "Sciences"], "mecanismes": ["Asymétrie", "Combinaison", "Draft", "Gestion de ressources", "Majorité", "Objectif Commun", "Placement de tuiles", "Stratégie"], "editeurs": ["Fryxgames", "Intrafin Games"], "note": 8.9, "ext_notes": []}, {"id": 19563, "titre": "The 7th Continent", "univers": "The 7th Continent", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 120, "dmax": 999, "age": "12+", "categories": ["Jeu de Cartes"], "themes": ["Aventure", "Fantasy", "Survie"], "mecanismes": ["Card-driven", "Coopération", "Énigme", "Exploration", "Gestion de main", "Placement de cartes", "Plateau modulaire", "Prise de risque", "Roleplay"], "editeurs": ["Serious Poulp"], "note": 8.2, "ext_notes": []}, {"id": 96789, "titre": "The Elder Scrolls - La Trahison De La Deuxième Ère", "univers": "The Elder Scrolls", "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 60, "dmax": 240, "age": "14+", "categories": ["Jeu de plateau"], "themes": ["Fantastique", "Jeu vidéo"], "mecanismes": ["Campagne", "Coopération", "Exploration", "hexagones", "Jet De Dés", "Plateau modulaire", "Scénarios"], "editeurs": ["Chip Theory Games", "Lucky Duck Games"], "note": 9.1, "ext_notes": []}, {"id": 21673, "titre": "Thunder Alley", "univers": null, "pmin": 2, "pmax": 7, "pmin_ext": 2, "pmax_ext": 7, "dmin": 90, "dmax": 90, "age": "10+", "categories": ["Jeu de plateau"], "themes": ["Automobile", "Course", "Sports"], "mecanismes": ["Card-driven", "Déplacement", "Gestion de main", "Prise de risque", "Simulation"], "editeurs": ["GMT Games"], "note": 8.3, "ext_notes": []}, {"id": 50488, "titre": "Too Many Bones", "univers": null, "pmin": 1, "pmax": 4, "pmin_ext": 1, "pmax_ext": 4, "dmin": 60, "dmax": 120, "age": "12+", "categories": ["Jeu de dés", "Jeu de plateau"], "themes": ["Médiéval Fantastique"], "mecanismes": ["Coopération", "Deck building", "Gestion de main", "Jet De Dés", "Pouvoir", "Roleplay"], "editeurs": ["Chip Theory Games", "Lucky Duck Games"], "note": 8.7, "ext_notes": []}, {"id": 63508, "titre": "Too Many Bones - Undertow", "univers": null, "pmin": 1, "pmax": 2, "pmin_ext": 1, "pmax_ext": 4, "dmin": 60, "dmax": 180, "age": "12+", "categories": ["Jeu de dés"], "themes": ["Fantastique"], "mecanismes": ["Affrontement Direct", "Deck building", "Jet De Dés", "Roleplay"], "editeurs": ["Chip Theory Games", "Lucky Duck Games"], "note": 9.0, "ext_notes": ["Too Many Bones - 40 Jours Au Daelore"]}, {"id": 43927, "titre": "Velonimo", "univers": null, "pmin": 2, "pmax": 5, "pmin_ext": 2, "pmax_ext": 5, "dmin": 30, "dmax": 40, "age": "7+", "categories": ["Jeu de Cartes"], "themes": ["Animaux", "Course", "Cyclisme", "Sports"], "mecanismes": ["Combinaison", "Course", "Défausse"], "editeurs": ["Studio Stratosphères"], "note": 7.2, "ext_notes": []}, {"id": 373, "titre": "Vendredi", "univers": "Robinson Crusoé", "pmin": 1, "pmax": 1, "pmin_ext": 1, "pmax_ext": 1, "dmin": 30, "dmax": 30, "age": "10+", "categories": ["Jeu de Cartes"], "themes": ["Exploration", "Les îles"], "mecanismes": ["Affrontement Direct", "Deck building"], "editeurs": ["Edge Entertainment"], "note": 7.4, "ext_notes": []}, {"id": 80026, "titre": "Zenith", "univers": null, "pmin": 2, "pmax": 4, "pmin_ext": 2, "pmax_ext": 4, "dmin": 30, "dmax": 30, "age": "12+", "categories": ["Jeu de Cartes"], "themes": ["Science-fiction"], "mecanismes": ["Équipes", "Gestion de main", "Négociation", "Plateau modulaire", "Tir à la corde"], "editeurs": ["PlayPunk"], "note": 8.5, "ext_notes": []}];
+
+const STORAGE_KEY = 'soireeJeux_ajouts';
+const OVERRIDES_KEY = 'soireeJeux_overrides';
+const SESSIONS_KEY = 'soireeJeux_sessions';
+
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){
+    return fallback;
+  }
+}
+function saveJSON(key, value){
+  try{
+    localStorage.setItem(key, JSON.stringify(value));
+  }catch(e){
+    console.warn('Impossible de sauvegarder localement :', e);
+  }
+}
+
+let customGames = loadJSON(STORAGE_KEY, []);
+let overrides = loadJSON(OVERRIDES_KEY, {});
+let sessions = loadJSON(SESSIONS_KEY, []);
+
+function saveCustomGames(){ saveJSON(STORAGE_KEY, customGames); pushLibraryToFirestore(); }
+function saveOverrides(){ saveJSON(OVERRIDES_KEY, overrides); pushLibraryToFirestore(); }
+function saveSessions(){ saveJSON(SESSIONS_KEY, sessions); }
+
+let libraryPushTimer = null;
+function pushLibraryToFirestore(){
+  if (!(typeof isAdmin === 'function' && isAdmin())) return;
+  if (!initFirebase()) return;
+  clearTimeout(libraryPushTimer);
+  libraryPushTimer = setTimeout(() => {
+    fbDb.collection('appdata').doc('library').set({
+      customGames, overrides, updatedAt: new Date().toISOString()
+    }).catch(err => {
+      console.error(err);
+      alert("Erreur lors de la sauvegarde partagée (Firestore) : " + err.message + "\n(as-tu bien mis ton UID dans les règles Firestore ?)");
+    });
+  }, 600);
+}
+
+function pullLibraryFromFirestore(){
+  if (!initFirebase()) return;
+  fbDb.collection('appdata').doc('library').get().then(doc => {
+    if (!doc.exists) return;
+    const data = doc.data();
+    if (Array.isArray(data.customGames)) customGames = data.customGames;
+    if (data.overrides && typeof data.overrides === 'object') overrides = data.overrides;
+    saveJSON(STORAGE_KEY, customGames);
+    saveJSON(OVERRIDES_KEY, overrides);
+    refreshChips();
+    updateRestoreBtn();
+    render();
+  }).catch(err => console.warn('Lecture bibliothèque partagée impossible :', err));
+}
+
+function allGames(){
+  const base = GAMES
+    .filter(g => !(overrides[g.id] && overrides[g.id].removed))
+    .map(g => overrides[g.id] ? Object.assign({}, g, overrides[g.id]) : g);
+  return base.concat(customGames);
+}
+
+function hiddenCount(){
+  return Object.values(overrides).filter(o => o && o.removed).length;
+}
+
+let state = {
+  players: 4,
+  maxTime: 90,
+  minTime: 0,
+  search: '',
+  themes: new Set(),
+  mecs: new Set(),
+  useExt: true
+};
+
+function effRange(g){
+  if (state.useExt && g.pmin_ext !== undefined){
+    return { pmin: Math.min(g.pmin, g.pmin_ext), pmax: Math.max(g.pmax, g.pmax_ext) };
+  }
+  return { pmin: g.pmin, pmax: g.pmax };
+}
+
+function countBy(key){
+  const c = {};
+  allGames().forEach(g => g[key].forEach(t => c[t] = (c[t]||0)+1));
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]);
+}
+
+function buildChips(containerId, key, stateSet, limit, onToggle){
+  const container = document.getElementById(containerId);
+  const counts = countBy(key).slice(0, limit);
+  container.innerHTML = '';
+  counts.forEach(([tag, n]) => {
+    const el = document.createElement('div');
+    el.className = 'chip' + (stateSet.has(tag) ? ' active' : '');
+    el.innerHTML = tag + '<span class="n">' + n + '</span>';
+    el.addEventListener('click', () => {
+      if (stateSet.has(tag)) stateSet.delete(tag);
+      else stateSet.add(tag);
+      el.classList.toggle('active');
+      (onToggle || render)();
+    });
+    container.appendChild(el);
+  });
+}
+
+function refreshChips(){
+  buildChips('themeChips', 'themes', state.themes, 18);
+  buildChips('mecChips', 'mecanismes', state.mecs, 18);
+}
+
+function escapeHTML(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function matches(g){
+  const r = effRange(g);
+  if (r.pmin > state.players || r.pmax < state.players) return false;
+  if (g.dmin > state.maxTime) return false;
+  if (g.dmax < state.minTime) return false;
+  if (state.search){
+    const s = state.search.toLowerCase();
+    const hay = (g.titre + ' ' + (g.univers||'')).toLowerCase();
+    if (!hay.includes(s)) return false;
+  }
+  if (state.themes.size > 0){
+    const ok = g.themes.some(t => state.themes.has(t));
+    if (!ok) return false;
+  }
+  if (state.mecs.size > 0){
+    const ok = g.mecanismes.some(t => state.mecs.has(t));
+    if (!ok) return false;
+  }
+  return true;
+}
+
+function durationLabel(g){
+  if (g.dmin === g.dmax) return g.dmin + ' min';
+  return g.dmin + '–' + g.dmax + ' min';
+}
+function playersLabel(g){
+  const r = effRange(g);
+  if (r.pmin === r.pmax) return r.pmin + ' joueur' + (r.pmin>1?'s':'');
+  if (r.pmax >= 99) return r.pmin + '+ joueurs';
+  return r.pmin + '–' + r.pmax + ' joueurs';
+}
+
+function cardHTML(g, picked){
+  const overTime = g.dmax > state.maxTime && g.dmax < 999;
+  const r = effRange(g);
+  const widened = state.useExt && g.ext_notes && g.ext_notes.length > 0
+    && (r.pmin !== g.pmin || r.pmax !== g.pmax);
+  return '<div class="card' + (picked?' picked':'') + '" data-id="' + g.id + '">'
+    + (g.imageUrl ? '<img class="card-img" src="' + escapeHTML(g.imageUrl) + '" alt="' + escapeHTML(g.titre) + '" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;card-img card-img-broken&quot;>Image indisponible</div>\';">' : '')
+    + '<div class="card-top">'
+      + '<h3>' + escapeHTML(g.titre) + '</h3>'
+      + '<div style="display:flex;gap:2px;">'
+        + (typeof isAdmin === 'function' && isAdmin() ? '<button class="edit-btn" data-edit="' + g.id + '" title="Modifier la fiche">&#9998;</button>' : '')
+        + (typeof isAdmin === 'function' && isAdmin() ? '<button class="del-btn" data-del="' + g.id + '" title="Retirer ce jeu de la sélection">&times;</button>' : '')
+      + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;align-items:center;">'
+      + (g.univers ? '<div class="univers">' + escapeHTML(g.univers) + '</div>' : '')
+      + (g.custom ? '<span class="badge-custom">Ajouté par toi</span>' : '')
+    + '</div>'
+    + '<div class="badges">'
+      + '<span class="badge">' + playersLabel(g) + '</span>'
+      + '<span class="badge' + (overTime?' warn':'') + '">' + durationLabel(g) + (overTime?' &#9888;':'') + '</span>'
+      + (g.age ? '<span class="badge">' + escapeHTML(g.age) + '</span>' : '')
+    + '</div>'
+    + (widened ? '<div class="ext-note">&#9989; ' + g.pmin + '–' + g.pmax + ' joueurs de base, étendu grâce à : ' + g.ext_notes.map(escapeHTML).join(', ') + '</div>' : '')
+    + (g.resume ? '<div class="resume">' + escapeHTML(g.resume) + '</div>' : '')
+    + '<div class="tags">' + g.themes.slice(0,4).map(t=>'<span class="tag">'+escapeHTML(t)+'</span>').join('') + '</div>'
+    + (g.videoUrl ? '<a class="video-link" href="' + escapeHTML(g.videoUrl) + '" target="_blank" rel="noopener">&#9654; Règles en vidéo</a>' : '')
+    + (g.note ? '<div class="note">Note myludo : <b>' + g.note.toFixed(1) + '</b>/10</div>' : '')
+    + '</div>';
+}
+
+let lastPickedId = null;
+
+function render(){
+  const filtered = allGames().filter(matches);
+  document.getElementById('resultCount').textContent = filtered.length;
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('emptyState');
+  if (filtered.length === 0){
+    grid.style.display = 'none';
+    empty.style.display = 'block';
+  } else {
+    grid.style.display = 'grid';
+    empty.style.display = 'none';
+    filtered.sort((a,b) => a.dmin - b.dmin);
+    grid.innerHTML = filtered.map(g => cardHTML(g, g.id === lastPickedId)).join('');
+  }
+  document.getElementById('drawBtn').disabled = filtered.length === 0;
+
+  grid.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseFloat(btn.getAttribute('data-del'));
+      const customIdx = customGames.findIndex(g => g.id === id);
+      if (customIdx !== -1){
+        customGames.splice(customIdx, 1);
+        saveCustomGames();
+      } else {
+        overrides[id] = Object.assign({}, overrides[id], { removed: true });
+        saveOverrides();
+      }
+      lastPickedId = null;
+      refreshChips();
+      updateRestoreBtn();
+      render();
+    });
+  });
+  grid.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseFloat(btn.getAttribute('data-edit'));
+      const g = allGames().find(x => x.id === id);
+      if (g) openModal(g);
+    });
+  });
+}
+
+function updateRestoreBtn(){
+  const btn = document.getElementById('restoreBtn');
+  const n = hiddenCount();
+  if (n > 0 && typeof isAdmin === 'function' && isAdmin()){
+    btn.style.display = 'inline-block';
+    btn.textContent = 'Restaurer ' + n + ' jeu(x) masqué(s)';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+document.getElementById('restoreBtn').addEventListener('click', () => {
+  Object.keys(overrides).forEach(id => {
+    if (overrides[id] && overrides[id].removed) delete overrides[id].removed;
+  });
+  saveOverrides();
+  updateRestoreBtn();
+  refreshChips();
+  render();
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active');
+    document.getElementById('headerBadge').style.display = btn.dataset.tab === 'choisir' ? 'block' : 'none';
+    if (btn.dataset.tab === 'parties') renderStatsAndSessions();
+    if (btn.dataset.tab === 'soirees') renderSoireesList();
+  });
+});
+
+// Player stepper
+document.getElementById('pMinus').addEventListener('click', () => {
+  state.players = Math.max(1, state.players - 1);
+  document.getElementById('pVal').textContent = state.players;
+  lastPickedId = null;
+  render();
+});
+document.getElementById('pPlus').addEventListener('click', () => {
+  state.players = Math.min(12, state.players + 1);
+  document.getElementById('pVal').textContent = state.players;
+  lastPickedId = null;
+  render();
+});
+document.getElementById('extToggle').addEventListener('change', (e) => {
+  state.useExt = e.target.checked;
+  lastPickedId = null;
+  render();
+});
+
+// Time slider
+document.getElementById('timeRange').addEventListener('input', (e) => {
+  state.maxTime = parseInt(e.target.value);
+  document.getElementById('timeVal').textContent = state.maxTime;
+  if (state.minTime > state.maxTime){
+    state.minTime = state.maxTime;
+    document.getElementById('timeRangeMin').value = state.minTime;
+    document.getElementById('timeMinVal').textContent = state.minTime;
+  }
+  lastPickedId = null;
+  render();
+});
+document.getElementById('timeRangeMin').addEventListener('input', (e) => {
+  state.minTime = parseInt(e.target.value);
+  document.getElementById('timeMinVal').textContent = state.minTime;
+  if (state.minTime > state.maxTime){
+    state.maxTime = state.minTime;
+    document.getElementById('timeRange').value = state.maxTime;
+    document.getElementById('timeVal').textContent = state.maxTime;
+  }
+  lastPickedId = null;
+  render();
+});
+
+// Search
+document.getElementById('searchBox').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  lastPickedId = null;
+  render();
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state = { players: 4, maxTime: 90, minTime: 0, search: '', themes: new Set(), mecs: new Set(), useExt: true };
+  document.getElementById('pVal').textContent = 4;
+  document.getElementById('timeRange').value = 90;
+  document.getElementById('timeVal').textContent = 90;
+  document.getElementById('timeRangeMin').value = 0;
+  document.getElementById('timeMinVal').textContent = 0;
+  document.getElementById('searchBox').value = '';
+  document.getElementById('extToggle').checked = true;
+  document.querySelectorAll('.chip.active').forEach(c => c.classList.remove('active'));
+  lastPickedId = null;
+  render();
+});
+
+// Random draw with slot-machine roll effect
+document.getElementById('drawBtn').addEventListener('click', () => {
+  const filtered = allGames().filter(matches);
+  if (filtered.length === 0) return;
+  const die = document.getElementById('dieIcon');
+  const btn = document.getElementById('drawBtn');
+  btn.disabled = true;
+  die.classList.add('rolling');
+
+  let ticks = 0;
+  const maxTicks = 14 + Math.floor(Math.random()*6);
+  const interval = setInterval(() => {
+    ticks++;
+    const preview = filtered[Math.floor(Math.random()*filtered.length)];
+    lastPickedId = preview.id;
+    render();
+    if (ticks >= maxTicks){
+      clearInterval(interval);
+      die.classList.remove('rolling');
+      btn.disabled = false;
+      const chosen = filtered[Math.floor(Math.random()*filtered.length)];
+      lastPickedId = chosen.id;
+      render();
+      const el = document.querySelector('.card.picked');
+      if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  }, 90);
+});
+
+// Add / edit game modal
+const modalOverlay = document.getElementById('modalOverlay');
+const formError = document.getElementById('formError');
+let editId = null;
+
+function openModal(editingGame){
+  formError.style.display = 'none';
+  editId = editingGame ? editingGame.id : null;
+
+  if (editingGame){
+    document.getElementById('modalTitle').textContent = 'Modifier ' + editingGame.titre;
+    document.getElementById('modalSub').textContent = editingGame.custom
+      ? 'Ce jeu a été ajouté par toi — modifie ce que tu veux.'
+      : 'Ce jeu vient de ta ludothèque myludo. Tes modifications restent enregistrées dans ce navigateur, sans toucher à myludo.';
+    document.getElementById('f-titre').value = editingGame.titre;
+    document.getElementById('f-univers').value = editingGame.univers || '';
+    document.getElementById('f-pmin').value = editingGame.pmin;
+    document.getElementById('f-pmax').value = editingGame.pmax;
+    document.getElementById('f-pmin-ext').value = editingGame.pmin_ext !== undefined ? editingGame.pmin_ext : editingGame.pmin;
+    document.getElementById('f-pmax-ext').value = editingGame.pmax_ext !== undefined ? editingGame.pmax_ext : editingGame.pmax;
+    document.getElementById('f-dmin').value = editingGame.dmin;
+    document.getElementById('f-dmax').value = editingGame.dmax;
+    document.getElementById('f-age').value = editingGame.age || '';
+    document.getElementById('f-themes').value = (editingGame.themes || []).join(', ');
+    document.getElementById('f-mecs').value = (editingGame.mecanismes || []).join(', ');
+    document.getElementById('f-resume').value = editingGame.resume || '';
+    document.getElementById('f-video').value = editingGame.videoUrl || '';
+    document.getElementById('f-image').value = editingGame.imageUrl || '';
+    document.getElementById('saveAddBtn').textContent = 'Enregistrer les modifications';
+  } else {
+    document.getElementById('modalTitle').textContent = 'Ajouter un jeu';
+    document.getElementById('modalSub').textContent = "Il n'est pas encore dans ta ludothèque myludo ? Ajoute-le juste ici, il restera enregistré dans ce navigateur.";
+    document.getElementById('f-titre').value = '';
+    document.getElementById('f-univers').value = '';
+    document.getElementById('f-pmin').value = 2;
+    document.getElementById('f-pmax').value = 4;
+    document.getElementById('f-pmin-ext').value = 2;
+    document.getElementById('f-pmax-ext').value = 4;
+    document.getElementById('f-dmin').value = 30;
+    document.getElementById('f-dmax').value = 60;
+    document.getElementById('f-age').value = '';
+    document.getElementById('f-themes').value = '';
+    document.getElementById('f-mecs').value = '';
+    document.getElementById('f-resume').value = '';
+    document.getElementById('f-video').value = '';
+    document.getElementById('f-image').value = '';
+    document.getElementById('saveAddBtn').textContent = 'Ajouter à la ludothèque';
+  }
+  modalOverlay.classList.add('open');
+  document.getElementById('f-image').dispatchEvent(new Event('input'));
+  document.getElementById('f-titre').focus();
+}
+function closeModal(){
+  modalOverlay.classList.remove('open');
+  editId = null;
+}
+
+document.getElementById('f-image').addEventListener('input', (e) => {
+  const url = e.target.value.trim();
+  const img = document.getElementById('f-image-preview');
+  const status = document.getElementById('f-image-status');
+  if (!url){
+    img.style.display = 'none';
+    status.textContent = '';
+    return;
+  }
+  status.textContent = 'Chargement...';
+  status.style.color = 'var(--ink-dim)';
+  img.onload = () => { img.style.display = 'block'; status.textContent = 'Image OK ✓'; status.style.color = 'var(--teal)'; };
+  img.onerror = () => { img.style.display = 'none'; status.textContent = "Ce lien ne charge pas d'image (lien cassé ou site qui bloque l'affichage externe)."; status.style.color = 'var(--danger)'; };
+  img.src = url;
+});
+
+document.getElementById('openAddBtn').addEventListener('click', () => {
+  if (!isAdmin()){ alert('Seul le compte admin peut ajouter ou modifier des jeux.'); return; }
+  openModal(null);
+});
+document.getElementById('cancelAddBtn').addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+
+function splitList(v){
+  return v.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+document.getElementById('saveAddBtn').addEventListener('click', () => {
+  if (!isAdmin()){ alert('Seul le compte admin peut ajouter ou modifier des jeux.'); closeModal(); return; }
+  const titre = document.getElementById('f-titre').value.trim();
+  const univers = document.getElementById('f-univers').value.trim();
+  const pmin = parseInt(document.getElementById('f-pmin').value);
+  const pmax = parseInt(document.getElementById('f-pmax').value);
+  const pminExt = parseInt(document.getElementById('f-pmin-ext').value);
+  const pmaxExt = parseInt(document.getElementById('f-pmax-ext').value);
+  const dmin = parseInt(document.getElementById('f-dmin').value);
+  const dmax = parseInt(document.getElementById('f-dmax').value);
+  const age = document.getElementById('f-age').value.trim();
+  const themes = splitList(document.getElementById('f-themes').value);
+  const mecs = splitList(document.getElementById('f-mecs').value);
+  const resume = document.getElementById('f-resume').value.trim();
+  const videoUrl = document.getElementById('f-video').value.trim();
+  const imageUrl = document.getElementById('f-image').value.trim();
+
+  const valid = titre && Number.isFinite(pmin) && Number.isFinite(pmax)
+    && Number.isFinite(dmin) && Number.isFinite(dmax)
+    && Number.isFinite(pminExt) && Number.isFinite(pmaxExt)
+    && pmin > 0 && pmax >= pmin && dmin > 0 && dmax >= dmin
+    && pminExt > 0 && pmaxExt >= pminExt;
+
+  if (!valid){
+    formError.style.display = 'block';
+    return;
+  }
+
+  const fields = {
+    titre, univers: univers || null,
+    pmin, pmax, pmin_ext: pminExt, pmax_ext: pmaxExt,
+    dmin, dmax,
+    age: age || null,
+    themes, mecanismes: mecs,
+    resume: resume || null,
+    videoUrl: videoUrl || null,
+    imageUrl: imageUrl || null,
+  };
+
+  if (editId !== null){
+    const customIdx = customGames.findIndex(g => g.id === editId);
+    if (customIdx !== -1){
+      customGames[customIdx] = Object.assign({}, customGames[customIdx], fields);
+      saveCustomGames();
+    } else {
+      overrides[editId] = Object.assign({}, overrides[editId], fields);
+      saveOverrides();
+    }
+    lastPickedId = editId;
+  } else {
+    const newGame = Object.assign({}, fields, {
+      id: Date.now() + Math.random(),
+      categories: [],
+      editeurs: [],
+      note: null,
+      ext_notes: [],
+      custom: true
+    });
+    customGames.push(newGame);
+    saveCustomGames();
+    lastPickedId = newGame.id;
+  }
+
+  refreshChips();
+  render();
+  closeModal();
+});
+
+// ===================== Sessions & Stats =====================
+
+const sessionModalOverlay = document.getElementById('sessionModalOverlay');
+const sessionFormError = document.getElementById('sessionFormError');
+let editSessionId = null;
+
+function populateGameDatalist(){
+  const dl = document.getElementById('gameTitleList');
+  dl.innerHTML = allGames().map(g => '<option value="' + escapeHTML(g.titre) + '">').join('');
+}
+
+document.getElementById('s-coop').addEventListener('change', (e) => {
+  document.getElementById('s-outcome-row').style.display = e.target.checked ? 'block' : 'none';
+  document.getElementById('s-winners-row').style.display = e.target.checked ? 'none' : 'block';
+});
+
+function openSessionModal(editingSession){
+  populateGameDatalist();
+  sessionFormError.style.display = 'none';
+  editSessionId = editingSession ? editingSession.id : null;
+
+  if (editingSession){
+    document.getElementById('sessionModalTitle').textContent = 'Modifier la partie';
+    document.getElementById('s-game').value = editingSession.gameTitle;
+    document.getElementById('s-date').value = editingSession.date;
+    document.getElementById('s-duration').value = editingSession.duration || '';
+    document.getElementById('s-players').value = editingSession.players.join(', ');
+    document.getElementById('s-coop').checked = !!editingSession.coop;
+    document.getElementById('s-outcome-row').style.display = editingSession.coop ? 'block' : 'none';
+    document.getElementById('s-winners-row').style.display = editingSession.coop ? 'none' : 'block';
+    if (editingSession.coop){
+      document.getElementById('s-outcome').value = editingSession.winners.length > 0 ? 'win' : 'lose';
+    } else {
+      document.getElementById('s-winners').value = editingSession.winners.join(', ');
+    }
+    document.getElementById('s-notes').value = editingSession.notes || '';
+    document.getElementById('saveSessionBtn').textContent = 'Enregistrer les modifications';
+  } else {
+    document.getElementById('sessionModalTitle').textContent = 'Enregistrer une partie';
+    document.getElementById('s-game').value = '';
+    document.getElementById('s-date').value = new Date().toISOString().slice(0,10);
+    document.getElementById('s-duration').value = '';
+    document.getElementById('s-players').value = '';
+    document.getElementById('s-coop').checked = false;
+    document.getElementById('s-outcome-row').style.display = 'none';
+    document.getElementById('s-winners-row').style.display = 'block';
+    document.getElementById('s-outcome').value = 'win';
+    document.getElementById('s-winners').value = '';
+    document.getElementById('s-notes').value = '';
+    document.getElementById('saveSessionBtn').textContent = 'Enregistrer';
+  }
+  sessionModalOverlay.classList.add('open');
+  document.getElementById('s-game').focus();
+}
+function closeSessionModal(){
+  sessionModalOverlay.classList.remove('open');
+  editSessionId = null;
+}
+
+document.getElementById('openSessionBtn').addEventListener('click', () => openSessionModal(null));
+document.getElementById('cancelSessionBtn').addEventListener('click', closeSessionModal);
+sessionModalOverlay.addEventListener('click', (e) => {
+  if (e.target === sessionModalOverlay) closeSessionModal();
+});
+
+document.getElementById('saveSessionBtn').addEventListener('click', () => {
+  const gameTitle = document.getElementById('s-game').value.trim();
+  const date = document.getElementById('s-date').value;
+  const duration = parseInt(document.getElementById('s-duration').value);
+  const players = splitList(document.getElementById('s-players').value);
+  const coop = document.getElementById('s-coop').checked;
+  const notes = document.getElementById('s-notes').value.trim();
+
+  let winners = [];
+  if (coop){
+    const outcome = document.getElementById('s-outcome').value;
+    winners = outcome === 'win' ? players.slice() : [];
+  } else {
+    const rawWinners = splitList(document.getElementById('s-winners').value);
+    winners = rawWinners.map(w => {
+      const match = players.find(p => p.toLowerCase() === w.toLowerCase());
+      return match || w;
+    }).filter(w => players.some(p => p.toLowerCase() === w.toLowerCase()));
+  }
+
+  const valid = gameTitle && date && players.length > 0 && (coop || winners.length > 0);
+  if (!valid){
+    sessionFormError.style.display = 'block';
+    return;
+  }
+
+  const fields = {
+    gameTitle, date,
+    duration: Number.isFinite(duration) ? duration : null,
+    players, coop, winners, notes: notes || ''
+  };
+
+  if (editSessionId !== null){
+    const idx = sessions.findIndex(s => s.id === editSessionId);
+    if (idx !== -1) sessions[idx] = Object.assign({}, sessions[idx], fields);
+  } else {
+    sessions.push(Object.assign({ id: Date.now() + Math.random() }, fields));
+  }
+  saveSessions();
+  renderStatsAndSessions();
+  closeSessionModal();
+});
+
+function sessionCardHTML(s){
+  const d = new Date(s.date);
+  const dateLabel = isNaN(d) ? s.date : d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+  let winnerLabel;
+  if (s.coop){
+    winnerLabel = s.winners.length > 0 ? 'Victoire coopérative &#127881;' : 'Défaite coopérative';
+  } else {
+    winnerLabel = s.winners.length > 0 ? ('Gagnant(s) : ' + s.winners.map(escapeHTML).join(', ')) : 'Pas de gagnant enregistré';
+  }
+  return '<div class="session-card" data-sid="' + s.id + '">'
+    + '<div class="s-main">'
+      + '<h4>' + escapeHTML(s.gameTitle) + '</h4>'
+      + '<div class="s-meta">' + dateLabel + (s.duration ? ' &middot; ' + s.duration + ' min' : '') + '</div>'
+      + '<div class="s-players">' + s.players.map(escapeHTML).join(', ') + '</div>'
+      + '<div class="s-winner">' + winnerLabel + '</div>'
+      + (s.notes ? '<div class="s-notes">' + escapeHTML(s.notes) + '</div>' : '')
+    + '</div>'
+    + '<div class="s-actions">'
+      + '<button class="edit-btn" data-sedit="' + s.id + '" title="Modifier">&#9998;</button>'
+      + '<button class="del-btn" data-sdel="' + s.id + '" title="Supprimer">&times;</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function barRowHTML(label, value, max){
+  const pct = max > 0 ? Math.max(4, Math.round((value/max)*100)) : 0;
+  return '<div class="bar-row">'
+    + '<div class="name">' + escapeHTML(label) + '</div>'
+    + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;"></div></div>'
+    + '<div class="val">' + value + '</div>'
+    + '</div>';
+}
+
+function renderStatsAndSessions(){
+  // Stat cards
+  const totalSessions = sessions.length;
+  const totalMinutes = sessions.reduce((sum,s) => sum + (s.duration||0), 0);
+  const gameCounts = {};
+  sessions.forEach(s => { gameCounts[s.gameTitle] = (gameCounts[s.gameTitle]||0) + 1; });
+  const topGameEntry = Object.entries(gameCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  const playerStats = {};
+  sessions.forEach(s => {
+    s.players.forEach(p => {
+      const key = p.toLowerCase();
+      if (!playerStats[key]) playerStats[key] = { name: p, played: 0, wins: 0 };
+      playerStats[key].played++;
+      if (s.winners.some(w => w.toLowerCase() === key)) playerStats[key].wins++;
+    });
+  });
+  const playerList = Object.values(playerStats).sort((a,b) => b.wins - a.wins || b.played - a.played);
+  const topPlayer = playerList[0];
+
+  const hours = Math.floor(totalMinutes/60);
+  const mins = totalMinutes % 60;
+  const timeLabel = totalMinutes > 0 ? (hours > 0 ? hours + 'h' + (mins>0? mins+'min':'') : mins + ' min') : '—';
+
+  document.getElementById('statCards').innerHTML =
+      '<div class="stat-card"><div class="n">' + totalSessions + '</div><div class="lbl">Parties enregistrées</div></div>'
+    + '<div class="stat-card"><div class="n">' + timeLabel + '</div><div class="lbl">Temps total joué</div></div>'
+    + '<div class="stat-card"><div class="n" style="font-size:1.25rem;">' + (topGameEntry ? escapeHTML(topGameEntry[0]) : '—') + '</div><div class="lbl">Jeu le plus joué' + (topGameEntry ? ' (' + topGameEntry[1] + 'x)' : '') + '</div></div>'
+    + '<div class="stat-card"><div class="n" style="font-size:1.25rem;">' + (topPlayer ? escapeHTML(topPlayer.name) : '—') + '</div><div class="lbl">Plus de victoires' + (topPlayer ? ' (' + topPlayer.wins + ')' : '') + '</div></div>';
+
+  // Player table
+  const table = document.getElementById('playerTable');
+  if (playerList.length === 0){
+    table.innerHTML = '<tr><td style="color:var(--ink-dim);padding:12px 0;">Aucune donnée pour l\'instant — enregistre une première partie.</td></tr>';
+  } else {
+    table.innerHTML = '<tr><th>Joueur</th><th>Parties</th><th>Victoires</th><th>Taux</th></tr>'
+      + playerList.map(p => {
+          const rate = p.played > 0 ? Math.round((p.wins/p.played)*100) : 0;
+          return '<tr><td>' + escapeHTML(p.name) + '</td><td>' + p.played + '</td><td>' + p.wins + '</td><td class="win-rate">' + rate + '%</td></tr>';
+        }).join('');
+  }
+
+  // Top games bars
+  const topGames = Object.entries(gameCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxGameCount = topGames.length > 0 ? topGames[0][1] : 0;
+  document.getElementById('topGamesBars').innerHTML = topGames.length > 0
+    ? topGames.map(([title,count]) => barRowHTML(title, count, maxGameCount)).join('')
+    : '<div style="color:var(--ink-dim);font-size:0.85rem;">Aucune partie enregistrée pour l\'instant.</div>';
+
+  // Player count distribution
+  const countDist = {};
+  sessions.forEach(s => { const n = s.players.length; countDist[n] = (countDist[n]||0)+1; });
+  const maxDist = Math.max(0, ...Object.values(countDist));
+  const distEntries = Object.entries(countDist).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+  document.getElementById('playerCountBars').innerHTML = distEntries.length > 0
+    ? distEntries.map(([n,count]) => barRowHTML(n + ' joueur' + (n>1?'s':''), count, maxDist)).join('')
+    : '<div style="color:var(--ink-dim);font-size:0.85rem;">Aucune partie enregistrée pour l\'instant.</div>';
+
+  // Never played
+  const playedTitlesLower = new Set(Object.keys(gameCounts).map(t => t.toLowerCase()));
+  const neverPlayed = allGames().filter(g => !playedTitlesLower.has(g.titre.toLowerCase()));
+  document.getElementById('neverPlayedList').innerHTML = neverPlayed.length > 0
+    ? neverPlayed.map(g => '<span class="tag">' + escapeHTML(g.titre) + '</span>').join('')
+    : '<div style="color:var(--ink-dim);font-size:0.85rem;">Tous les jeux de ta ludothèque ont déjà été joués au moins une fois !</div>';
+
+  // Session list
+  const sessionList = document.getElementById('sessionList');
+  const sessionEmpty = document.getElementById('sessionEmpty');
+  if (sessions.length === 0){
+    sessionList.style.display = 'none';
+    sessionEmpty.style.display = 'block';
+  } else {
+    sessionList.style.display = 'block';
+    sessionEmpty.style.display = 'none';
+    const sorted = sessions.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+    sessionList.innerHTML = sorted.map(sessionCardHTML).join('');
+  }
+
+  sessionList.querySelectorAll('[data-sdel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseFloat(btn.getAttribute('data-sdel'));
+      sessions = sessions.filter(s => s.id !== id);
+      saveSessions();
+      renderStatsAndSessions();
+    });
+  });
+  sessionList.querySelectorAll('[data-sedit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseFloat(btn.getAttribute('data-sedit'));
+      const s = sessions.find(x => x.id === id);
+      if (s) openSessionModal(s);
+    });
+  });
+}
+
+document.getElementById('neverPlayedToggle').addEventListener('click', () => {
+  const el = document.getElementById('neverPlayedList');
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+});
+
+// Export / import to file (portable backup, works on any computer)
+function showBackupStatus(msg){
+  const el = document.getElementById('backupStatus');
+  el.textContent = msg;
+  setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+}
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    customGames, overrides, sessions
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = 'soiree-jeux-sauvegarde-' + dateStr + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showBackupStatus('Fichier téléchargé &#10003;'.replace('&#10003;','✓'));
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFileInput').click();
+});
+
+document.getElementById('importFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try{
+      const data = JSON.parse(ev.target.result);
+      const ok = confirm(
+        'Importer ce fichier remplacera les données actuelles de ce navigateur '
+        + '(' + (data.customGames||[]).length + ' jeu(x) ajouté(s), '
+        + (data.sessions||[]).length + ' partie(s) enregistrée(s)). Continuer ?'
+      );
+      if (!ok) return;
+      customGames = Array.isArray(data.customGames) ? data.customGames : [];
+      overrides = (data.overrides && typeof data.overrides === 'object') ? data.overrides : {};
+      sessions = Array.isArray(data.sessions) ? data.sessions : [];
+      saveCustomGames();
+      saveOverrides();
+      saveSessions();
+      refreshChips();
+      updateRestoreBtn();
+      render();
+      renderStatsAndSessions();
+      showBackupStatus('Import réussi ✓');
+    }catch(err){
+      alert("Ce fichier n'est pas une sauvegarde valide.");
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+// ================= Firebase / Sondages =================
+const FB_CONFIG_KEY = 'soireeJeux_fbConfig';
+
+const DEFAULT_FB_CONFIG = {
+  apiKey: "AIzaSyC2Mjaa9jCOI6r-oo968H5LQ9DocW_of9s",
+  authDomain: "game-vote-872ab.firebaseapp.com",
+  projectId: "game-vote-872ab",
+  storageBucket: "game-vote-872ab.firebasestorage.app",
+  messagingSenderId: "183074353593",
+  appId: "1:183074353593:web:8833a8a1049dc5f1048668"
+};
+
+let fbConfig = loadJSON(FB_CONFIG_KEY, DEFAULT_FB_CONFIG);
+let fbApp = null, fbDb = null;
+
+function initFirebase(){
+  if (!fbConfig || !fbConfig.apiKey) return false;
+  try{
+    if (!fbApp){
+      fbApp = firebase.initializeApp(fbConfig);
+      fbDb = firebase.firestore();
+    }
+    return true;
+  }catch(e){
+    console.warn('Firebase init error', e);
+    return false;
+  }
+}
+
+// ================= Auth (admin = seul à pouvoir éditer les fiches) =================
+const ADMIN_UID_KEY = 'soireeJeux_adminUid';
+let currentUser = null;
+let adminUid = localStorage.getItem(ADMIN_UID_KEY) || '';
+
+function isAdmin(){
+  return !!(currentUser && adminUid && currentUser.uid === adminUid);
+}
+
+function updateAuthUI(){
+  const statusEl = document.getElementById('authStatus');
+  const signInBtn = document.getElementById('signInBtn');
+  const signOutBtn = document.getElementById('signOutBtn');
+  const uidPanel = document.getElementById('adminUidPanel');
+
+  if (currentUser){
+    signInBtn.style.display = 'none';
+    signOutBtn.style.display = 'inline-block';
+    if (isAdmin()){
+      statusEl.textContent = 'Connecté en admin (' + (currentUser.email || currentUser.displayName) + ')';
+      statusEl.style.color = 'var(--teal)';
+    } else {
+      statusEl.textContent = 'Connecté (' + (currentUser.email || currentUser.displayName) + ') — lecture seule';
+      statusEl.style.color = 'var(--ink-dim)';
+      uidPanel.style.display = !adminUid ? 'block' : 'none';
+    }
+    if (!adminUid){
+      uidPanel.style.display = 'block';
+      document.getElementById('myUidDisplay').textContent = currentUser.uid;
+      document.getElementById('adminUidInput').value = currentUser.uid;
+    } else {
+      uidPanel.style.display = 'none';
+    }
+  } else {
+    signInBtn.style.display = 'inline-block';
+    signOutBtn.style.display = 'none';
+    statusEl.textContent = 'Non connecté (lecture seule)';
+    statusEl.style.color = 'var(--ink-dim)';
+    uidPanel.style.display = 'none';
+  }
+
+  document.getElementById('openAddBtn').style.display = isAdmin() ? 'inline-flex' : 'none';
+  updateRestoreBtn();
+  updateFbStatusUI();
+  renderSoireesList();
+}
+
+document.getElementById('signInBtn').addEventListener('click', () => {
+  if (!initFirebase()){
+    alert('Connexion Firebase indisponible.');
+    return;
+  }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider).catch(err => {
+    console.error(err);
+    alert('Connexion échouée : ' + err.message);
+  });
+});
+document.getElementById('signOutBtn').addEventListener('click', () => {
+  firebase.auth().signOut();
+});
+document.getElementById('saveAdminUidBtn').addEventListener('click', () => {
+  const val = document.getElementById('adminUidInput').value.trim();
+  if (!val){ return; }
+  adminUid = val;
+  localStorage.setItem(ADMIN_UID_KEY, adminUid);
+  updateAuthUI();
+  refreshChips();
+  render();
+});
+
+function initAuthListener(){
+  if (!initFirebase()) return;
+  firebase.auth().onAuthStateChanged(user => {
+    currentUser = user;
+    updateAuthUI();
+    refreshChips();
+    render();
+  });
+}
+
+function fillConfigForm(){
+  if (!fbConfig) return;
+  document.getElementById('fb-apiKey').value = fbConfig.apiKey || '';
+  document.getElementById('fb-authDomain').value = fbConfig.authDomain || '';
+  document.getElementById('fb-projectId').value = fbConfig.projectId || '';
+  document.getElementById('fb-storageBucket').value = fbConfig.storageBucket || '';
+  document.getElementById('fb-messagingSenderId').value = fbConfig.messagingSenderId || '';
+  document.getElementById('fb-appId').value = fbConfig.appId || '';
+}
+
+function updateFbStatusUI(){
+  const ok = !!fbConfig && initFirebase();
+  document.getElementById('fbStatus').innerHTML = ok
+    ? '<span class="fb-status-ok">&#10003; Connecté</span>'
+    : '<span class="fb-status-bad">Non connecté</span>';
+  document.getElementById('soireesCreatePanel').style.display = (ok && isAdmin()) ? 'block' : 'none';
+  document.getElementById('soireesLoginHint').style.display = (ok && !isAdmin()) ? 'block' : 'none';
+  return ok;
+}
+
+document.getElementById('fbHelpToggle').addEventListener('click', () => {
+  const el = document.getElementById('fbHelpText');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('fbSaveBtn').addEventListener('click', () => {
+  const cfg = {
+    apiKey: document.getElementById('fb-apiKey').value.trim(),
+    authDomain: document.getElementById('fb-authDomain').value.trim(),
+    projectId: document.getElementById('fb-projectId').value.trim(),
+    storageBucket: document.getElementById('fb-storageBucket').value.trim(),
+    messagingSenderId: document.getElementById('fb-messagingSenderId').value.trim(),
+    appId: document.getElementById('fb-appId').value.trim()
+  };
+  if (!cfg.apiKey || !cfg.projectId){
+    document.getElementById('fbStatus').innerHTML = '<span class="fb-status-bad">apiKey et projectId sont obligatoires.</span>';
+    return;
+  }
+  fbConfig = cfg;
+  saveJSON(FB_CONFIG_KEY, fbConfig);
+  fbApp = null; fbDb = null;
+  updateFbStatusUI();
+});
+
+// ================= Soirées (dates -> jeu -> fixé) =================
+const MY_SOIREES_KEY = 'soireeJeux_mySoirees';
+function loadMySoirees(){ return loadJSON(MY_SOIREES_KEY, []); }
+function saveMySoirees(list){ saveJSON(MY_SOIREES_KEY, list); }
+function randomId(){ return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
+
+function formatDateFR(iso){
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'long', year:'numeric' });
+}
+
+function soireeLinkFor(id){
+  const url = new URL(window.location.href);
+  url.search = '?soiree=' + id;
+  url.hash = '';
+  return url.toString();
+}
+
+function stageLabel(status){
+  return status === 'dates' ? 'Étape 1 : dates en cours'
+    : status === 'game' ? 'Étape 2 : vote jeu en cours'
+    : 'Soirée fixée';
+}
+
+document.getElementById('createSoireeBtn').addEventListener('click', () => {
+  const title = document.getElementById('sv-title').value.trim();
+  if (!title){ return; }
+  if (!isAdmin() || !initFirebase()){
+    alert("Connecte-toi en admin d'abord.");
+    return;
+  }
+  const id = randomId();
+  fbDb.collection('soirees').doc(id).set({
+    title, status: 'dates',
+    guests: [], dateOptions: [], chosenDate: null, dateVotes: {},
+    gameOptions: [], chosenGame: null, gameVotes: {},
+    createdAt: new Date().toISOString()
+  }).then(() => {
+    const list = loadMySoirees();
+    list.unshift({ id, title, createdAt: new Date().toISOString() });
+    saveMySoirees(list);
+    document.getElementById('sv-title').value = '';
+    renderSoireesList();
+  }).catch(err => {
+    console.error(err);
+    alert("Erreur lors de la création : vérifie tes règles Firestore (collection 'soirees').");
+  });
+});
+
+function renderSoireesList(){
+  const container = document.getElementById('soireesList');
+  if (!isAdmin()){
+    container.innerHTML = '<div style="color:var(--ink-dim);font-size:0.85rem;">Connecte-toi en admin pour voir et gérer tes soirées.</div>';
+    return;
+  }
+  const list = loadMySoirees();
+  if (list.length === 0){
+    container.innerHTML = '<div style="color:var(--ink-dim);font-size:0.85rem;">Aucune soirée créée pour l\'instant.</div>';
+    return;
+  }
+  container.innerHTML = list.map(p => {
+    const link = soireeLinkFor(p.id);
+    return '<div class="poll-list-item" data-refreshid="' + p.id + '">'
+      + '<div><b>' + escapeHTML(p.title) + '</b> <span class="hint" data-statusslot="' + p.id + '"></span></div>'
+      + '<div style="display:flex;gap:10px;align-items:center;">'
+        + '<a href="' + link + '" target="_blank">Ouvrir</a>'
+        + '<button class="copy-btn" data-copylink="' + escapeHTML(link) + '" type="button">Copier le lien</button>'
+        + '<button class="del-btn" data-delsoiree="' + p.id + '" title="Supprimer cette soirée">&times;</button>'
+      + '</div>'
+    + '</div>';
+  }).join('');
+  container.querySelectorAll('[data-delsoiree]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-delsoiree');
+      if (!confirm('Supprimer définitivement cette soirée (dates, invités, votes, tout) ?')) return;
+      const proceed = () => {
+        const remaining = loadMySoirees().filter(x => x.id !== id);
+        saveMySoirees(remaining);
+        renderSoireesList();
+      };
+      if (initFirebase()){
+        fbDb.collection('soirees').doc(id).delete().then(proceed).catch(err => {
+          console.error(err);
+          alert('Erreur lors de la suppression : ' + err.message);
+        });
+      } else {
+        proceed();
+      }
+    });
+  });
+  container.querySelectorAll('[data-copylink]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(btn.getAttribute('data-copylink')).then(() => {
+        btn.textContent = 'Copié !';
+        setTimeout(() => { btn.textContent = 'Copier le lien'; }, 1500);
+      });
+    });
+  });
+  if (initFirebase()){
+    list.forEach(p => {
+      fbDb.collection('soirees').doc(p.id).get().then(doc => {
+        const slot = container.querySelector('[data-statusslot="' + p.id + '"]');
+        if (slot && doc.exists) slot.textContent = '· ' + stageLabel(doc.data().status);
+      }).catch(() => {});
+    });
+  }
+}
+
+// ---- Standalone page: ?soiree=ID ----
+let svEventId = null, svVoterId = null, svEventData = null;
+let svGameState = { players: 4, maxTime: 90, minTime: 0, useExt: true, mecs: new Set(), search: '' };
+
+function svGameMatches(g){
+  const r = (svGameState.useExt && g.pmin_ext !== undefined)
+    ? { pmin: Math.min(g.pmin, g.pmin_ext), pmax: Math.max(g.pmax, g.pmax_ext) }
+    : { pmin: g.pmin, pmax: g.pmax };
+  if (r.pmin > svGameState.players || r.pmax < svGameState.players) return false;
+  if (g.dmin > svGameState.maxTime) return false;
+  if (g.dmax < svGameState.minTime) return false;
+  if (svGameState.mecs.size > 0){
+    const ok = g.mecanismes.some(t => svGameState.mecs.has(t));
+    if (!ok) return false;
+  }
+  if (svGameState.search){
+    const hay = (g.titre + ' ' + (g.univers||'')).toLowerCase();
+    if (!hay.includes(svGameState.search.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function voteCardHTML(o){
+  return '<label class="vote-card' + (o.checked?' picked':'') + '">'
+    + '<input type="checkbox" class="' + o.checkboxClass + '" value="' + escapeHTML(o.value) + '"' + (o.checked?' checked':'') + '>'
+    + (o.imageUrl ? '<img class="vote-card-img" src="' + escapeHTML(o.imageUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '')
+    + '<div class="vote-card-body">'
+      + '<h4>' + escapeHTML(o.titre) + '</h4>'
+      + (o.univers ? '<div class="univers">' + escapeHTML(o.univers) + '</div>' : '')
+      + '<div class="badges">'
+        + '<span class="badge">' + escapeHTML(o.playersStr || '') + '</span>'
+        + '<span class="badge">' + escapeHTML(o.durationStr || '') + '</span>'
+        + (o.age ? '<span class="badge">' + escapeHTML(o.age) + '</span>' : '')
+      + '</div>'
+      + (o.resume ? '<div class="resume">' + escapeHTML(o.resume) + '</div>' : '')
+      + '<div class="tags">' + (o.themes || []).slice(0,4).map(t=>'<span class="tag">'+escapeHTML(t)+'</span>').join('') + '</div>'
+      + (o.videoUrl ? '<a class="video-link" href="' + escapeHTML(o.videoUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();">&#9654; Règles en vidéo</a>' : '')
+      + (o.note ? '<div class="note">Note myludo : <b>' + o.note.toFixed(1) + '</b>/10</div>' : '')
+    + '</div>'
+  + '</label>';
+}
+
+function svRenderGameFilterChecklist(){
+  const container = document.getElementById('sv-gameChecklist');
+  const list = allGames().filter(svGameMatches);
+  document.getElementById('sv-gameChecklistCount').textContent = list.length + ' jeu(x) correspondent à ces critères';
+  const previouslyChecked = new Set(
+    Array.from(document.querySelectorAll('.sv-game-cb:checked')).map(cb => cb.value)
+  );
+  container.className = 'vote-grid';
+  container.innerHTML = list.map(g => voteCardHTML({
+    checkboxClass: 'sv-game-cb',
+    value: g.titre,
+    checked: previouslyChecked.has(g.titre),
+    imageUrl: g.imageUrl, titre: g.titre, univers: g.univers,
+    playersStr: playersLabel(g), durationStr: durationLabel(g),
+    age: g.age, resume: g.resume, themes: g.themes, videoUrl: g.videoUrl, note: g.note
+  })).join('') || '<div style="color:var(--ink-dim);font-size:0.85rem;padding:8px;">Aucun jeu ne correspond à ces critères.</div>';
+}
+
+function svCountConfirmedGuests(){
+  if (!svEventData || !svEventData.chosenDate) return 0;
+  const votes = svEventData.dateVotes || {};
+  return Object.values(votes).filter(v => (v.availableDates || []).includes(svEventData.chosenDate)).length;
+}
+
+function svSetupGameFilterOnce(){
+  buildChips('sv-mecChips', 'mecanismes', svGameState.mecs, 18, svRenderGameFilterChecklist);
+  document.getElementById('sv-pMinus').onclick = () => {
+    svGameState.players = Math.max(1, svGameState.players - 1);
+    document.getElementById('sv-pVal').textContent = svGameState.players;
+    svRenderGameFilterChecklist();
+  };
+  document.getElementById('sv-pPlus').onclick = () => {
+    svGameState.players = Math.min(12, svGameState.players + 1);
+    document.getElementById('sv-pVal').textContent = svGameState.players;
+    svRenderGameFilterChecklist();
+  };
+  document.getElementById('sv-extToggle').onchange = (e) => {
+    svGameState.useExt = e.target.checked;
+    svRenderGameFilterChecklist();
+  };
+  document.getElementById('sv-timeRange').oninput = (e) => {
+    svGameState.maxTime = parseInt(e.target.value);
+    document.getElementById('sv-timeVal').textContent = svGameState.maxTime;
+    if (svGameState.minTime > svGameState.maxTime){
+      svGameState.minTime = svGameState.maxTime;
+      document.getElementById('sv-timeRangeMin').value = svGameState.minTime;
+      document.getElementById('sv-timeMinVal').textContent = svGameState.minTime;
+    }
+    svRenderGameFilterChecklist();
+  };
+  document.getElementById('sv-timeRangeMin').oninput = (e) => {
+    svGameState.minTime = parseInt(e.target.value);
+    document.getElementById('sv-timeMinVal').textContent = svGameState.minTime;
+    if (svGameState.minTime > svGameState.maxTime){
+      svGameState.maxTime = svGameState.minTime;
+      document.getElementById('sv-timeRange').value = svGameState.maxTime;
+      document.getElementById('sv-timeVal').textContent = svGameState.maxTime;
+    }
+    svRenderGameFilterChecklist();
+  };
+  document.getElementById('sv-gameSearch').oninput = (e) => {
+    svGameState.search = e.target.value;
+    svRenderGameFilterChecklist();
+  };
+  document.getElementById('sv-checkAllBtn').onclick = () => {
+    document.querySelectorAll('.sv-game-cb').forEach(cb => cb.checked = true);
+  };
+  document.getElementById('sv-uncheckAllBtn').onclick = () => {
+    document.querySelectorAll('.sv-game-cb').forEach(cb => cb.checked = false);
+  };
+  svRenderGameFilterChecklist();
+}
+
+function svSaveEvent(fields){
+  return fbDb.collection('soirees').doc(svEventId).update(fields);
+}
+
+function svRender(){
+  const ev = svEventData;
+  document.getElementById('sv-pageTitle').textContent = ev.title || 'Soirée';
+  document.getElementById('sv-pageSub').textContent = stageLabel(ev.status);
+  document.getElementById('sv-content').style.display = 'block';
+
+  const admin = isAdmin();
+
+  // Guests panel (always visible to admin)
+  document.getElementById('sv-adminGuestsPanel').style.display = admin ? 'block' : 'none';
+  if (admin) svUpdateNotifStatus();
+  if (admin){
+    document.getElementById('sv-shareLink').value = soireeLinkFor(svEventId);
+    const gl = document.getElementById('sv-guestList');
+    gl.innerHTML = (ev.guests || []).length > 0
+      ? ev.guests.map(g => '<div class="guest-row">'
+          + '<span class="guest-name">' + escapeHTML(g.name) + '</span>'
+          + (g.contact ? '<span class="guest-contact">' + escapeHTML(g.contact) + '</span>' : '')
+          + '<button class="del-btn" data-delguest="' + g.id + '" title="Retirer">&times;</button>'
+        + '</div>').join('')
+      : '<div style="color:var(--ink-dim);font-size:0.85rem;">Aucun invité pour l\'instant.</div>';
+    gl.querySelectorAll('[data-delguest]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        ev.guests = ev.guests.filter(g => g.id !== btn.getAttribute('data-delguest'));
+        svSaveEvent({ guests: ev.guests }).then(svReload);
+      });
+    });
+  }
+
+  // Stage visibility
+  document.getElementById('sv-stageDates').style.display = ev.status === 'dates' ? 'block' : 'none';
+  document.getElementById('sv-stageGame').style.display = ev.status === 'game' ? 'block' : 'none';
+  document.getElementById('sv-stageDone').style.display = ev.status === 'done' ? 'block' : 'none';
+
+  if (ev.status === 'dates'){
+    const hasDates = (ev.dateOptions || []).length > 0;
+    document.getElementById('sv-adminDatesPanel').style.display = admin ? 'block' : 'none';
+    document.getElementById('sv-dateVotePanel').style.display = hasDates ? 'block' : 'none';
+    document.getElementById('sv-dateResultsPanel').style.display = hasDates ? 'block' : 'none';
+
+    if (admin && document.getElementById('sv-calGrid').dataset.filled !== '1'){
+      (ev.dateOptions || []).forEach(d => svSelectedDates.add(d));
+      svRenderCalendar();
+      svRenderSelectedChips();
+      document.getElementById('sv-calGrid').dataset.filled = '1';
+    }
+
+    if (hasDates){
+      const votes = ev.dateVotes || {};
+      const myVote = votes[svVoterId];
+      const myDates = myVote ? (myVote.availableDates || []) : [];
+      if (myVote && !document.getElementById('sv-voterName').value) document.getElementById('sv-voterName').value = myVote.name || '';
+      document.getElementById('sv-dateChecklist').innerHTML = ev.dateOptions.map((iso, i) => {
+        const checked = myDates.includes(iso) ? 'checked' : '';
+        return '<div class="vote-row"><div class="vote-row-top">'
+          + '<input type="checkbox" class="sv-date-cb" value="' + escapeHTML(iso) + '" id="svdcb-' + i + '" ' + checked + '>'
+          + '<label class="vote-title" for="svdcb-' + i + '">' + formatDateFR(iso) + '</label>'
+        + '</div></div>';
+      }).join('');
+
+      const tally = {};
+      ev.dateOptions.forEach(d => tally[d] = 0);
+      Object.values(votes).forEach(v => (v.availableDates||[]).forEach(d => { if (tally[d] !== undefined) tally[d]++; }));
+      const entries = Object.entries(tally).sort((a,b) => b[1]-a[1]);
+      const voterCount = Object.keys(votes).length;
+      const maxVal = Math.max(1, voterCount, entries.length ? entries[0][1] : 0);
+      document.getElementById('sv-dateResults').innerHTML = entries.map(([d,c]) => barRowHTML(formatDateFR(d), c, maxVal)).join('');
+      document.getElementById('sv-dateVoterCount').textContent = voterCount + ' personne(s) ont répondu.';
+
+      if (admin){
+        document.getElementById('sv-validateDateRow').innerHTML = entries.map(([d]) =>
+          '<button class="save-btn" data-validatedate="' + escapeHTML(d) + '" style="margin:4px 6px 0 0;">Valider ' + formatDateFR(d) + '</button>'
+        ).join('');
+        document.getElementById('sv-validateDateRow').querySelectorAll('[data-validatedate]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            svSaveEvent({ chosenDate: btn.getAttribute('data-validatedate'), status: 'game' }).then(svReload);
+          });
+        });
+      }
+    }
+  }
+
+  if (ev.status === 'game'){
+    document.getElementById('sv-chosenDateDisplay').textContent = ev.chosenDate ? formatDateFR(ev.chosenDate) : '—';
+    if (ev.chosenDate){
+      document.getElementById('sv-gcalLink').href = googleCalendarLink(ev.title, ev.chosenDate, 'Organisé via l\'appli soirée jeux.');
+    }
+    const hasGames = (ev.gameOptions || []).length > 0;
+    document.getElementById('sv-adminGamePanel').style.display = admin ? 'block' : 'none';
+    document.getElementById('sv-gameVotePanel').style.display = hasGames ? 'block' : 'none';
+    document.getElementById('sv-gameResultsPanel').style.display = hasGames ? 'block' : 'none';
+
+    if (admin && !document.getElementById('sv-mecChips').dataset.filled){
+      const confirmed = svCountConfirmedGuests();
+      if (confirmed > 0){
+        svGameState.players = confirmed;
+        document.getElementById('sv-pVal').textContent = confirmed;
+      }
+      document.getElementById('sv-guestCountHint').textContent = confirmed > 0
+        ? confirmed + ' personne(s) confirmée(s) pour cette date — nombre de joueurs pré-rempli.'
+        : "Personne n'a encore confirmé cette date pour l'instant.";
+      svSetupGameFilterOnce();
+      document.getElementById('sv-mecChips').dataset.filled = '1';
+    }
+
+    if (hasGames){
+      const votes = ev.gameVotes || {};
+      const myVote = votes[svVoterId];
+      const myChoices = myVote ? (myVote.choices || []) : [];
+      if (myVote && !document.getElementById('sv-gameVoterName').value) document.getElementById('sv-gameVoterName').value = myVote.name || '';
+      const checklistEl = document.getElementById('sv-gameVoteChecklist');
+      checklistEl.className = 'vote-grid';
+      checklistEl.innerHTML = ev.gameOptions.map(pg => voteCardHTML({
+        checkboxClass: 'sv-gamevote-cb',
+        value: pg.title,
+        checked: myChoices.includes(pg.title),
+        imageUrl: pg.imageUrl, titre: pg.title, univers: pg.univers,
+        playersStr: pg.playersStr || (pg.meta ? pg.meta.split(' · ')[0] : ''),
+        durationStr: pg.durationStr || (pg.meta ? pg.meta.split(' · ')[1] : ''),
+        age: pg.age, resume: pg.resume, themes: pg.themes, videoUrl: pg.videoUrl, note: pg.note
+      })).join('');
+
+      const tally = {};
+      ev.gameOptions.forEach(pg => tally[pg.title] = 0);
+      Object.values(votes).forEach(v => (v.choices||[]).forEach(c => { if (tally[c] !== undefined) tally[c]++; }));
+      const entries = Object.entries(tally).sort((a,b) => b[1]-a[1]);
+      const voterCount = Object.keys(votes).length;
+      const maxVal = Math.max(1, voterCount, entries.length ? entries[0][1] : 0);
+      document.getElementById('sv-gameResults').innerHTML = entries.map(([t,c]) => barRowHTML(t, c, maxVal)).join('');
+      document.getElementById('sv-gameVoterCount').textContent = voterCount + ' personne(s) ont voté.';
+
+      if (admin){
+        document.getElementById('sv-validateGameRow').innerHTML = entries.map(([t]) =>
+          '<button class="save-btn" data-validategame="' + escapeHTML(t) + '" style="margin:4px 6px 0 0;">Valider ' + escapeHTML(t) + '</button>'
+        ).join('');
+        document.getElementById('sv-validateGameRow').querySelectorAll('[data-validategame]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            svSaveEvent({ chosenGame: btn.getAttribute('data-validategame'), status: 'done' }).then(svReload);
+          });
+        });
+      }
+    }
+  }
+
+  if (ev.status === 'done'){
+    document.getElementById('sv-doneSummary').textContent = ev.title + ' — ' + (ev.chosenDate ? formatDateFR(ev.chosenDate) : '') + ' — on joue à ' + (ev.chosenGame || '?') + ' !';
+    document.getElementById('sv-doneGuests').textContent = (ev.guests||[]).length + ' invité(s) au total.';
+    if (ev.chosenDate){
+      document.getElementById('sv-gcalLinkDone').href = googleCalendarLink(
+        ev.title + (ev.chosenGame ? ' — ' + ev.chosenGame : ''),
+        ev.chosenDate,
+        'On joue à : ' + (ev.chosenGame || '?') + '. Organisé via l\'appli soirée jeux.'
+      );
+    }
+    const reopenBtn = document.getElementById('sv-reopenGameBtn');
+    reopenBtn.style.display = admin ? 'inline-block' : 'none';
+    reopenBtn.onclick = () => { svSaveEvent({ status: 'game', chosenGame: null }).then(svReload); };
+  }
+}
+
+let svCalMonth = new Date();
+svCalMonth.setDate(1);
+let svSelectedDates = new Set();
+
+function svRenderCalendar(){
+  const grid = document.getElementById('sv-calGrid');
+  const label = document.getElementById('sv-calMonthLabel');
+  const year = svCalMonth.getFullYear(), month = svCalMonth.getMonth();
+  label.textContent = svCalMonth.toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+  let html = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => '<div class="mini-cal-dow">' + d + '</div>').join('');
+  for (let i = 0; i < startOffset; i++) html += '<div class="mini-cal-day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++){
+    const iso = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const isPast = iso < todayStr;
+    const isSelected = svSelectedDates.has(iso);
+    html += '<div class="mini-cal-day' + (isSelected?' selected':'') + (isPast?' past':'') + '" data-iso="' + iso + '">' + d + '</div>';
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.mini-cal-day[data-iso]:not(.past)').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const iso = cell.getAttribute('data-iso');
+      if (svSelectedDates.has(iso)) svSelectedDates.delete(iso); else svSelectedDates.add(iso);
+      svRenderCalendar();
+      svRenderSelectedChips();
+    });
+  });
+}
+
+function svRenderSelectedChips(){
+  const container = document.getElementById('sv-selectedDatesChips');
+  const sorted = Array.from(svSelectedDates).sort();
+  container.innerHTML = sorted.length > 0
+    ? sorted.map(iso => '<span class="chip active">' + formatDateFR(iso) + ' <span data-removedate="' + iso + '" style="cursor:pointer;margin-left:4px;">&times;</span></span>').join('')
+    : '<span class="hint">Aucune date sélectionnée pour l\'instant.</span>';
+  container.querySelectorAll('[data-removedate]').forEach(x => {
+    x.addEventListener('click', (e) => {
+      e.stopPropagation();
+      svSelectedDates.delete(x.getAttribute('data-removedate'));
+      svRenderCalendar();
+      svRenderSelectedChips();
+    });
+  });
+}
+
+function googleCalendarLink(title, isoDate, details){
+  const start = isoDate.replace(/-/g, '');
+  const endD = new Date(isoDate + 'T00:00:00');
+  endD.setDate(endD.getDate() + 1);
+  const end = endD.toISOString().slice(0,10).replace(/-/g, '');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: start + '/' + end,
+    details: details || ''
+  });
+  return 'https://calendar.google.com/calendar/render?' + params.toString();
+}
+
+let svNotifSetup = false;
+let svLastDateVoterIds = null;
+let svLastGameVoterIds = null;
+
+function svSetupNotifications(){
+  if (svNotifSetup || !svEventId) return;
+  if (!('Notification' in window)) return;
+  svNotifSetup = true;
+  fbDb.collection('soirees').doc(svEventId).onSnapshot(doc => {
+    if (!doc.exists) return;
+    const data = doc.data();
+    const dateVotes = data.dateVotes || {};
+    const gameVotes = data.gameVotes || {};
+    const dateVoterIds = new Set(Object.keys(dateVotes));
+    const gameVoterIds = new Set(Object.keys(gameVotes));
+
+    if (svLastDateVoterIds !== null && Notification.permission === 'granted'){
+      dateVoterIds.forEach(vid => {
+        if (!svLastDateVoterIds.has(vid)){
+          const name = (dateVotes[vid] || {}).name || 'Quelqu\'un';
+          new Notification('Nouveau vote de dates', { body: name + ' a indiqué ses disponibilités pour "' + data.title + '".' });
+        }
+      });
+    }
+    if (svLastGameVoterIds !== null && Notification.permission === 'granted'){
+      gameVoterIds.forEach(vid => {
+        if (!svLastGameVoterIds.has(vid)){
+          const name = (gameVotes[vid] || {}).name || 'Quelqu\'un';
+          new Notification('Nouveau vote de jeu', { body: name + ' a voté pour "' + data.title + '".' });
+        }
+      });
+    }
+    svLastDateVoterIds = dateVoterIds;
+    svLastGameVoterIds = gameVoterIds;
+  });
+}
+
+function svUpdateNotifStatus(){
+  const status = document.getElementById('sv-notifStatus');
+  const btn = document.getElementById('sv-enableNotifBtn');
+  if (!('Notification' in window)){
+    status.textContent = "Ton navigateur ne supporte pas les notifications.";
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'granted'){
+    status.textContent = 'Activées ✓ — tant que cette page reste ouverte (même en arrière-plan).';
+    status.style.color = 'var(--teal)';
+    btn.style.display = 'none';
+    svSetupNotifications();
+  } else if (Notification.permission === 'denied'){
+    status.textContent = 'Bloquées par le navigateur — change ça dans les réglages du site si tu veux les activer.';
+    status.style.color = 'var(--danger)';
+    btn.style.display = 'none';
+  } else {
+    status.textContent = '';
+    btn.style.display = 'inline-block';
+  }
+}
+
+function svReload(){
+  fbDb.collection('soirees').doc(svEventId).get().then(doc => {
+    document.getElementById('sv-loading').style.display = 'none';
+    if (!doc.exists){
+      document.getElementById('sv-error').style.display = 'block';
+      document.getElementById('sv-error').textContent = "Cette soirée n'existe pas ou plus.";
+      return;
+    }
+    svEventData = doc.data();
+    svRender();
+  }).catch(err => {
+    console.error(err);
+    document.getElementById('sv-loading').style.display = 'none';
+    document.getElementById('sv-error').style.display = 'block';
+    document.getElementById('sv-error').textContent = "Impossible de charger la soirée (connexion / règles Firestore).";
+  });
+}
+
+function initSoireeStandaloneIfNeeded(){
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('soiree');
+  if (!id) return;
+  svEventId = id;
+
+  document.getElementById('appMain').style.display = 'none';
+  document.getElementById('soireeStandalone').style.display = 'block';
+
+  if (!initFirebase()){
+    document.getElementById('sv-loading').style.display = 'none';
+    document.getElementById('sv-error').style.display = 'block';
+    document.getElementById('sv-error').textContent = "Connexion à la base indisponible.";
+    return;
+  }
+
+  const voterKey = 'soireeJeux_soireeVoterId_' + id;
+  svVoterId = localStorage.getItem(voterKey);
+  if (!svVoterId){
+    svVoterId = 'v-' + Math.random().toString(36).slice(2,10);
+    localStorage.setItem(voterKey, svVoterId);
+  }
+
+  document.getElementById('sv-calPrev').addEventListener('click', () => {
+    svCalMonth.setMonth(svCalMonth.getMonth() - 1);
+    svRenderCalendar();
+  });
+  document.getElementById('sv-calNext').addEventListener('click', () => {
+    svCalMonth.setMonth(svCalMonth.getMonth() + 1);
+    svRenderCalendar();
+  });
+  document.getElementById('sv-publishDatesBtn').addEventListener('click', () => {
+    const unique = Array.from(svSelectedDates).sort();
+    if (unique.length < 2){ alert('Sélectionne au moins deux dates dans le calendrier.'); return; }
+    svSaveEvent({ dateOptions: unique }).then(() => {
+      document.getElementById('sv-calGrid').dataset.filled = '1';
+      svReload();
+    });
+  });
+  document.getElementById('sv-enableNotifBtn').addEventListener('click', () => {
+    Notification.requestPermission().then(() => svUpdateNotifStatus());
+  });
+  document.getElementById('sv-addGuestBtn').addEventListener('click', () => {
+    const name = document.getElementById('sv-guestName').value.trim();
+    if (!name) return;
+    const contact = document.getElementById('sv-guestContact').value.trim();
+    const guests = (svEventData.guests || []).concat([{ id: randomId(), name, contact: contact || null }]);
+    svSaveEvent({ guests }).then(() => {
+      document.getElementById('sv-guestName').value = '';
+      document.getElementById('sv-guestContact').value = '';
+      svReload();
+    });
+  });
+  document.getElementById('sv-copyLinkBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(document.getElementById('sv-shareLink').value).then(() => {
+      const btn = document.getElementById('sv-copyLinkBtn');
+      btn.textContent = 'Copié !';
+      setTimeout(() => { btn.textContent = 'Copier le lien'; }, 1500);
+    });
+  });
+  document.getElementById('sv-submitDateVoteBtn').addEventListener('click', () => {
+    const name = document.getElementById('sv-voterName').value.trim();
+    const availableDates = Array.from(document.querySelectorAll('.sv-date-cb:checked')).map(cb => cb.value);
+    if (!name){ alert('Indique ton prénom.'); return; }
+    svSaveEvent({ ['dateVotes.' + svVoterId]: { name, availableDates, votedAt: new Date().toISOString() } }).then(() => {
+      document.getElementById('sv-dateVoteStatus').textContent = 'Enregistré ✓';
+      setTimeout(() => { document.getElementById('sv-dateVoteStatus').textContent = ''; }, 3000);
+      svReload();
+    });
+  });
+  document.getElementById('sv-refreshDatesBtn').addEventListener('click', svReload);
+  document.getElementById('sv-refreshGamesBtn').addEventListener('click', svReload);
+
+  document.getElementById('sv-publishGamesBtn').addEventListener('click', () => {
+    const checked = Array.from(document.querySelectorAll('.sv-game-cb:checked')).map(cb => cb.value);
+    if (checked.length === 0){ alert('Coche au moins un jeu.'); return; }
+    const gamesSnapshot = checked.map(title => {
+      const g = allGames().find(x => x.titre === title);
+      return {
+        title,
+        univers: g ? (g.univers || null) : null,
+        age: g ? (g.age || null) : null,
+        themes: g ? (g.themes || []) : [],
+        note: g ? (g.note || null) : null,
+        resume: g ? (g.resume || null) : null,
+        videoUrl: g ? (g.videoUrl || null) : null,
+        imageUrl: g ? (g.imageUrl || null) : null,
+        playersStr: g ? playersLabel(g) : '',
+        durationStr: g ? durationLabel(g) : '',
+        meta: g ? (playersLabel(g) + ' · ' + durationLabel(g)) : ''
+      };
+    });
+    svSaveEvent({ gameOptions: gamesSnapshot }).then(svReload);
+  });
+  document.getElementById('sv-submitGameVoteBtn').addEventListener('click', () => {
+    const name = document.getElementById('sv-gameVoterName').value.trim();
+    const choices = Array.from(document.querySelectorAll('.sv-gamevote-cb:checked')).map(cb => cb.value);
+    if (!name){ alert('Indique ton prénom.'); return; }
+    svSaveEvent({ ['gameVotes.' + svVoterId]: { name, choices, votedAt: new Date().toISOString() } }).then(() => {
+      document.getElementById('sv-gameVoteStatus').textContent = 'Enregistré ✓';
+      setTimeout(() => { document.getElementById('sv-gameVoteStatus').textContent = ''; }, 3000);
+      svReload();
+    });
+  });
+
+  svReload();
+}
+
+// Init
+refreshChips();
+updateRestoreBtn();
+render();
+fillConfigForm();
+updateFbStatusUI();
+renderSoireesList();
+initAuthListener();
+pullLibraryFromFirestore();
+initSoireeStandaloneIfNeeded();
+</script>
+</body>
+</html>
