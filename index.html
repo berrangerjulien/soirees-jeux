@@ -667,9 +667,16 @@ service cloud.firestore {
     </div>
 
     <!-- Stage: dates -->
-    <div id="sv-stageDates" style="display:none;">
-      <div class="panel" id="sv-adminDatesPanel" style="display:none;">
-        <h2>Étape 1 &middot; Proposer des dates</h2>
+    <div id="sv-stageVoting" style="display:none;">
+      <div class="panel" id="sv-chosenDateBanner" style="display:none;">
+        <h2 style="margin-bottom:6px;">Date retenue</h2>
+        <div id="sv-chosenDateDisplay" style="font-family:Georgia,serif;font-size:1.15rem;color:var(--gold);"></div>
+        <a id="sv-gcalLink" href="#" target="_blank" class="reset-btn" style="display:inline-block;margin-top:10px;text-decoration:none;">&#128197; Ajouter à Google Agenda</a>
+      </div>
+
+      <div class="panel" id="sv-adminVotingPanel" style="display:none;">
+        <h2>Proposer dates &amp; jeux</h2>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px 0;">Dates possibles</h3>
         <div class="mini-cal">
           <div class="mini-cal-head">
             <button class="reset-btn" id="sv-calPrev" type="button">&lsaquo;</button>
@@ -680,42 +687,8 @@ service cloud.firestore {
         </div>
         <div class="hint" style="margin-top:10px;">Clique sur les jours qui pourraient convenir.</div>
         <div class="chips" id="sv-selectedDatesChips" style="margin-top:8px;"></div>
-        <button class="save-btn" id="sv-publishDatesBtn" type="button" style="margin-top:16px;display:block;">Publier ces dates au vote</button>
-      </div>
 
-      <div class="panel" id="sv-dateVotePanel" style="display:none;">
-        <h2>Tes disponibilités</h2>
-        <div class="frow">
-          <label for="sv-voterName">Ton prénom</label>
-          <input type="text" id="sv-voterName" placeholder="Ex. Julien">
-        </div>
-        <div class="hint" style="margin-bottom:10px;">Coche toutes les dates où tu es dispo.</div>
-        <div id="sv-dateChecklist"></div>
-        <button class="save-btn" id="sv-submitDateVoteBtn" type="button" style="margin-top:16px;">Voter / mettre à jour</button>
-        <span id="sv-dateVoteStatus" style="margin-left:10px;color:var(--teal);font-size:0.85rem;"></span>
-      </div>
-
-      <div class="panel" id="sv-dateResultsPanel" style="display:none;">
-        <div class="toolbar" style="margin-bottom:10px;">
-          <h2 style="margin:0;">Résultats en direct</h2>
-          <button class="reset-btn" id="sv-refreshDatesBtn" type="button">Actualiser</button>
-        </div>
-        <div id="sv-dateResults"></div>
-        <div class="hint" id="sv-dateVoterCount" style="margin-top:10px;"></div>
-        <div id="sv-validateDateRow" style="margin-top:14px;"></div>
-      </div>
-    </div>
-
-    <!-- Stage: game -->
-    <div id="sv-stageGame" style="display:none;">
-      <div class="panel">
-        <h2 style="margin-bottom:6px;">Date retenue</h2>
-        <div id="sv-chosenDateDisplay" style="font-family:Georgia,serif;font-size:1.15rem;color:var(--gold);"></div>
-        <a id="sv-gcalLink" href="#" target="_blank" class="reset-btn" style="display:inline-block;margin-top:10px;text-decoration:none;">&#128197; Ajouter à Google Agenda</a>
-      </div>
-
-      <div class="panel" id="sv-adminGamePanel" style="display:none;">
-        <h2>Étape 2 &middot; Proposer des jeux</h2>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:24px 0 10px 0;">Jeux possibles</h3>
         <div class="hint" id="sv-guestCountHint" style="margin-bottom:12px;"></div>
         <div class="row">
           <div class="field">
@@ -754,29 +727,38 @@ service cloud.firestore {
           </div>
         </div>
         <div id="sv-gameChecklist" style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:8px;"></div>
-        <button class="save-btn" id="sv-publishGamesBtn" type="button" style="margin-top:16px;">Publier ces jeux au vote</button>
+
+        <button class="save-btn" id="sv-publishVotingBtn" type="button" style="margin-top:20px;display:block;">Publier le sondage (dates + jeux)</button>
       </div>
 
-      <div class="panel" id="sv-gameVotePanel" style="display:none;">
+      <div class="panel" id="sv-votePanel" style="display:none;">
         <h2>Ton vote</h2>
         <div class="frow">
-          <label for="sv-gameVoterName">Ton prénom</label>
-          <input type="text" id="sv-gameVoterName" placeholder="Ex. Julien">
+          <label for="sv-voterName">Ton prénom</label>
+          <input type="text" id="sv-voterName" placeholder="Ex. Julien">
         </div>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 10px 0;">Tes disponibilités</h3>
+        <div class="hint" style="margin-bottom:10px;">Coche toutes les dates où tu es dispo.</div>
+        <div id="sv-dateChecklist"></div>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:22px 0 10px 0;">Tes jeux préférés</h3>
         <div class="hint" style="margin-bottom:10px;">Coche tous les jeux qui te vont.</div>
         <div id="sv-gameVoteChecklist"></div>
-        <button class="save-btn" id="sv-submitGameVoteBtn" type="button" style="margin-top:16px;">Voter / mettre à jour</button>
-        <span id="sv-gameVoteStatus" style="margin-left:10px;color:var(--teal);font-size:0.85rem;"></span>
+        <button class="save-btn" id="sv-submitVoteBtn" type="button" style="margin-top:20px;">Voter / mettre à jour</button>
+        <span id="sv-voteStatus" style="margin-left:10px;color:var(--teal);font-size:0.85rem;"></span>
       </div>
 
-      <div class="panel" id="sv-gameResultsPanel" style="display:none;">
+      <div class="panel" id="sv-resultsPanel" style="display:none;">
         <div class="toolbar" style="margin-bottom:10px;">
           <h2 style="margin:0;">Résultats en direct</h2>
-          <button class="reset-btn" id="sv-refreshGamesBtn" type="button">Actualiser</button>
+          <button class="reset-btn" id="sv-refreshBtn" type="button">Actualiser</button>
         </div>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:0 0 10px 0;">Dates</h3>
+        <div id="sv-dateResults"></div>
+        <div id="sv-validateDateRow" style="margin-top:12px;"></div>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:22px 0 10px 0;">Jeux</h3>
         <div id="sv-gameResults"></div>
-        <div class="hint" id="sv-gameVoterCount" style="margin-top:10px;"></div>
-        <div id="sv-validateGameRow" style="margin-top:14px;"></div>
+        <div id="sv-validateGameRow" style="margin-top:12px;"></div>
+        <div class="hint" id="sv-voterCount" style="margin-top:14px;"></div>
       </div>
     </div>
 
@@ -1918,9 +1900,7 @@ function soireeLinkFor(id){
 }
 
 function stageLabel(status){
-  return status === 'dates' ? 'Étape 1 : dates en cours'
-    : status === 'game' ? 'Étape 2 : vote jeu en cours'
-    : 'Soirée fixée';
+  return status === 'voting' ? 'Sondage en cours (dates + jeux)' : 'Soirée fixée';
 }
 
 document.getElementById('createSoireeBtn').addEventListener('click', () => {
@@ -1932,9 +1912,9 @@ document.getElementById('createSoireeBtn').addEventListener('click', () => {
   }
   const id = randomId();
   fbDb.collection('soirees').doc(id).set({
-    title, status: 'dates',
-    guests: [], dateOptions: [], chosenDate: null, dateVotes: {},
-    gameOptions: [], chosenGame: null, gameVotes: {},
+    title, status: 'voting',
+    guests: [], dateOptions: [], chosenDate: null,
+    gameOptions: [], chosenGame: null, votes: {},
     createdAt: new Date().toISOString()
   }).then(() => {
     const list = loadMySoirees();
@@ -2067,12 +2047,6 @@ function svRenderGameFilterChecklist(){
   })).join('') || '<div style="color:var(--ink-dim);font-size:0.85rem;padding:8px;">Aucun jeu ne correspond à ces critères.</div>';
 }
 
-function svCountConfirmedGuests(){
-  if (!svEventData || !svEventData.chosenDate) return 0;
-  const votes = svEventData.dateVotes || {};
-  return Object.values(votes).filter(v => (v.availableDates || []).includes(svEventData.chosenDate)).length;
-}
-
 function svSetupGameFilterOnce(){
   buildChips('sv-mecChips', 'mecanismes', svGameState.mecs, 18, svRenderGameFilterChecklist);
   document.getElementById('sv-pMinus').onclick = () => {
@@ -2156,15 +2130,22 @@ function svRender(){
   }
 
   // Stage visibility
-  document.getElementById('sv-stageDates').style.display = ev.status === 'dates' ? 'block' : 'none';
-  document.getElementById('sv-stageGame').style.display = ev.status === 'game' ? 'block' : 'none';
+  document.getElementById('sv-stageVoting').style.display = ev.status === 'voting' ? 'block' : 'none';
   document.getElementById('sv-stageDone').style.display = ev.status === 'done' ? 'block' : 'none';
 
-  if (ev.status === 'dates'){
+  if (ev.status === 'voting'){
     const hasDates = (ev.dateOptions || []).length > 0;
-    document.getElementById('sv-adminDatesPanel').style.display = admin ? 'block' : 'none';
-    document.getElementById('sv-dateVotePanel').style.display = hasDates ? 'block' : 'none';
-    document.getElementById('sv-dateResultsPanel').style.display = hasDates ? 'block' : 'none';
+    const hasGames = (ev.gameOptions || []).length > 0;
+
+    document.getElementById('sv-chosenDateBanner').style.display = ev.chosenDate ? 'block' : 'none';
+    if (ev.chosenDate){
+      document.getElementById('sv-chosenDateDisplay').textContent = formatDateFR(ev.chosenDate);
+      document.getElementById('sv-gcalLink').href = googleCalendarLink(ev.title, ev.chosenDate, "Organisé via l'appli soirée jeux.");
+    }
+
+    document.getElementById('sv-adminVotingPanel').style.display = admin ? 'block' : 'none';
+    document.getElementById('sv-votePanel').style.display = (hasDates || hasGames) ? 'block' : 'none';
+    document.getElementById('sv-resultsPanel').style.display = (hasDates || hasGames) ? 'block' : 'none';
 
     if (admin && document.getElementById('sv-calGrid').dataset.filled !== '1'){
       (ev.dateOptions || []).forEach(d => svSelectedDates.add(d));
@@ -2172,12 +2153,25 @@ function svRender(){
       svRenderSelectedChips();
       document.getElementById('sv-calGrid').dataset.filled = '1';
     }
+    if (admin && !document.getElementById('sv-mecChips').dataset.filled){
+      const guestCount = (ev.guests || []).length;
+      if (guestCount > 0){
+        svGameState.players = guestCount;
+        document.getElementById('sv-pVal').textContent = guestCount;
+      }
+      document.getElementById('sv-guestCountHint').textContent = guestCount > 0
+        ? guestCount + ' invité(s) au total — nombre de joueurs pré-rempli (ajuste si besoin).'
+        : "Ajoute des invités pour préremplir le nombre de joueurs.";
+      svSetupGameFilterOnce();
+      document.getElementById('sv-mecChips').dataset.filled = '1';
+    }
+
+    const votes = ev.votes || {};
+    const myVote = votes[svVoterId];
+    if (myVote && !document.getElementById('sv-voterName').value) document.getElementById('sv-voterName').value = myVote.name || '';
 
     if (hasDates){
-      const votes = ev.dateVotes || {};
-      const myVote = votes[svVoterId];
       const myDates = myVote ? (myVote.availableDates || []) : [];
-      if (myVote && !document.getElementById('sv-voterName').value) document.getElementById('sv-voterName').value = myVote.name || '';
       document.getElementById('sv-dateChecklist').innerHTML = ev.dateOptions.map((iso, i) => {
         const checked = myDates.includes(iso) ? 'checked' : '';
         return '<div class="vote-row"><div class="vote-row-top">'
@@ -2186,56 +2180,30 @@ function svRender(){
         + '</div></div>';
       }).join('');
 
-      const tally = {};
-      ev.dateOptions.forEach(d => tally[d] = 0);
-      Object.values(votes).forEach(v => (v.availableDates||[]).forEach(d => { if (tally[d] !== undefined) tally[d]++; }));
-      const entries = Object.entries(tally).sort((a,b) => b[1]-a[1]);
+      const dateTally = {};
+      ev.dateOptions.forEach(d => dateTally[d] = 0);
+      Object.values(votes).forEach(v => (v.availableDates||[]).forEach(d => { if (dateTally[d] !== undefined) dateTally[d]++; }));
+      const dateEntries = Object.entries(dateTally).sort((a,b) => b[1]-a[1]);
       const voterCount = Object.keys(votes).length;
-      const maxVal = Math.max(1, voterCount, entries.length ? entries[0][1] : 0);
-      document.getElementById('sv-dateResults').innerHTML = entries.map(([d,c]) => barRowHTML(formatDateFR(d), c, maxVal)).join('');
-      document.getElementById('sv-dateVoterCount').textContent = voterCount + ' personne(s) ont répondu.';
+      const maxDateVal = Math.max(1, voterCount, dateEntries.length ? dateEntries[0][1] : 0);
+      document.getElementById('sv-dateResults').innerHTML = dateEntries.map(([d,c]) => barRowHTML(formatDateFR(d), c, maxDateVal)).join('');
 
       if (admin){
-        document.getElementById('sv-validateDateRow').innerHTML = entries.map(([d]) =>
-          '<button class="save-btn" data-validatedate="' + escapeHTML(d) + '" style="margin:4px 6px 0 0;">Valider ' + formatDateFR(d) + '</button>'
+        document.getElementById('sv-validateDateRow').innerHTML = dateEntries.map(([d]) =>
+          '<button class="save-btn' + (ev.chosenDate === d ? '' : '') + '" data-validatedate="' + escapeHTML(d) + '" style="margin:4px 6px 0 0;' + (ev.chosenDate === d ? 'background:var(--teal);' : '') + '">' + (ev.chosenDate === d ? '✓ ' : 'Valider ') + formatDateFR(d) + '</button>'
         ).join('');
         document.getElementById('sv-validateDateRow').querySelectorAll('[data-validatedate]').forEach(btn => {
           btn.addEventListener('click', () => {
-            svSaveEvent({ chosenDate: btn.getAttribute('data-validatedate'), status: 'game' }).then(svReload);
+            const fields = { chosenDate: btn.getAttribute('data-validatedate') };
+            if (ev.chosenGame) fields.status = 'done';
+            svSaveEvent(fields).then(svReload);
           });
         });
       }
     }
-  }
-
-  if (ev.status === 'game'){
-    document.getElementById('sv-chosenDateDisplay').textContent = ev.chosenDate ? formatDateFR(ev.chosenDate) : '—';
-    if (ev.chosenDate){
-      document.getElementById('sv-gcalLink').href = googleCalendarLink(ev.title, ev.chosenDate, 'Organisé via l\'appli soirée jeux.');
-    }
-    const hasGames = (ev.gameOptions || []).length > 0;
-    document.getElementById('sv-adminGamePanel').style.display = admin ? 'block' : 'none';
-    document.getElementById('sv-gameVotePanel').style.display = hasGames ? 'block' : 'none';
-    document.getElementById('sv-gameResultsPanel').style.display = hasGames ? 'block' : 'none';
-
-    if (admin && !document.getElementById('sv-mecChips').dataset.filled){
-      const confirmed = svCountConfirmedGuests();
-      if (confirmed > 0){
-        svGameState.players = confirmed;
-        document.getElementById('sv-pVal').textContent = confirmed;
-      }
-      document.getElementById('sv-guestCountHint').textContent = confirmed > 0
-        ? confirmed + ' personne(s) confirmée(s) pour cette date — nombre de joueurs pré-rempli.'
-        : "Personne n'a encore confirmé cette date pour l'instant.";
-      svSetupGameFilterOnce();
-      document.getElementById('sv-mecChips').dataset.filled = '1';
-    }
 
     if (hasGames){
-      const votes = ev.gameVotes || {};
-      const myVote = votes[svVoterId];
-      const myChoices = myVote ? (myVote.choices || []) : [];
-      if (myVote && !document.getElementById('sv-gameVoterName').value) document.getElementById('sv-gameVoterName').value = myVote.name || '';
+      const myChoices = myVote ? (myVote.gameChoices || []) : [];
       const checklistEl = document.getElementById('sv-gameVoteChecklist');
       checklistEl.className = 'vote-grid';
       checklistEl.innerHTML = ev.gameOptions.map(pg => voteCardHTML({
@@ -2248,26 +2216,30 @@ function svRender(){
         age: pg.age, resume: pg.resume, themes: pg.themes, videoUrl: pg.videoUrl, note: pg.note
       })).join('');
 
-      const tally = {};
-      ev.gameOptions.forEach(pg => tally[pg.title] = 0);
-      Object.values(votes).forEach(v => (v.choices||[]).forEach(c => { if (tally[c] !== undefined) tally[c]++; }));
-      const entries = Object.entries(tally).sort((a,b) => b[1]-a[1]);
-      const voterCount = Object.keys(votes).length;
-      const maxVal = Math.max(1, voterCount, entries.length ? entries[0][1] : 0);
-      document.getElementById('sv-gameResults').innerHTML = entries.map(([t,c]) => barRowHTML(t, c, maxVal)).join('');
-      document.getElementById('sv-gameVoterCount').textContent = voterCount + ' personne(s) ont voté.';
+      const gameTally = {};
+      ev.gameOptions.forEach(pg => gameTally[pg.title] = 0);
+      Object.values(votes).forEach(v => (v.gameChoices||[]).forEach(c => { if (gameTally[c] !== undefined) gameTally[c]++; }));
+      const gameEntries = Object.entries(gameTally).sort((a,b) => b[1]-a[1]);
+      const voterCount2 = Object.keys(votes).length;
+      const maxGameVal = Math.max(1, voterCount2, gameEntries.length ? gameEntries[0][1] : 0);
+      document.getElementById('sv-gameResults').innerHTML = gameEntries.map(([t,c]) => barRowHTML(t, c, maxGameVal)).join('');
 
       if (admin){
-        document.getElementById('sv-validateGameRow').innerHTML = entries.map(([t]) =>
-          '<button class="save-btn" data-validategame="' + escapeHTML(t) + '" style="margin:4px 6px 0 0;">Valider ' + escapeHTML(t) + '</button>'
+        document.getElementById('sv-validateGameRow').innerHTML = gameEntries.map(([t]) =>
+          '<button class="save-btn" data-validategame="' + escapeHTML(t) + '" style="margin:4px 6px 0 0;' + (ev.chosenGame === t ? 'background:var(--teal);' : '') + '">' + (ev.chosenGame === t ? '✓ ' : 'Valider ') + escapeHTML(t) + '</button>'
         ).join('');
         document.getElementById('sv-validateGameRow').querySelectorAll('[data-validategame]').forEach(btn => {
           btn.addEventListener('click', () => {
-            svSaveEvent({ chosenGame: btn.getAttribute('data-validategame'), status: 'done' }).then(svReload);
+            const fields = { chosenGame: btn.getAttribute('data-validategame') };
+            if (ev.chosenDate) fields.status = 'done';
+            svSaveEvent(fields).then(svReload);
           });
         });
       }
     }
+
+    const totalVoters = Object.keys(votes).length;
+    document.getElementById('sv-voterCount').textContent = totalVoters + ' personne(s) ont répondu.';
   }
 
   if (ev.status === 'done'){
@@ -2282,7 +2254,7 @@ function svRender(){
     }
     const reopenBtn = document.getElementById('sv-reopenGameBtn');
     reopenBtn.style.display = admin ? 'inline-block' : 'none';
-    reopenBtn.onclick = () => { svSaveEvent({ status: 'game', chosenGame: null }).then(svReload); };
+    reopenBtn.onclick = () => { svSaveEvent({ status: 'voting' }).then(svReload); };
   }
 }
 
@@ -2349,8 +2321,7 @@ function googleCalendarLink(title, isoDate, details){
 }
 
 let svNotifSetup = false;
-let svLastDateVoterIds = null;
-let svLastGameVoterIds = null;
+let svLastVoterIds = null;
 
 function svSetupNotifications(){
   if (svNotifSetup || !svEventId) return;
@@ -2359,29 +2330,18 @@ function svSetupNotifications(){
   fbDb.collection('soirees').doc(svEventId).onSnapshot(doc => {
     if (!doc.exists) return;
     const data = doc.data();
-    const dateVotes = data.dateVotes || {};
-    const gameVotes = data.gameVotes || {};
-    const dateVoterIds = new Set(Object.keys(dateVotes));
-    const gameVoterIds = new Set(Object.keys(gameVotes));
+    const votes = data.votes || {};
+    const voterIds = new Set(Object.keys(votes));
 
-    if (svLastDateVoterIds !== null && Notification.permission === 'granted'){
-      dateVoterIds.forEach(vid => {
-        if (!svLastDateVoterIds.has(vid)){
-          const name = (dateVotes[vid] || {}).name || 'Quelqu\'un';
-          new Notification('Nouveau vote de dates', { body: name + ' a indiqué ses disponibilités pour "' + data.title + '".' });
+    if (svLastVoterIds !== null && Notification.permission === 'granted'){
+      voterIds.forEach(vid => {
+        if (!svLastVoterIds.has(vid)){
+          const name = (votes[vid] || {}).name || 'Quelqu\'un';
+          new Notification('Nouveau vote', { body: name + ' a répondu au sondage "' + data.title + '".' });
         }
       });
     }
-    if (svLastGameVoterIds !== null && Notification.permission === 'granted'){
-      gameVoterIds.forEach(vid => {
-        if (!svLastGameVoterIds.has(vid)){
-          const name = (gameVotes[vid] || {}).name || 'Quelqu\'un';
-          new Notification('Nouveau vote de jeu', { body: name + ' a voté pour "' + data.title + '".' });
-        }
-      });
-    }
-    svLastDateVoterIds = dateVoterIds;
-    svLastGameVoterIds = gameVoterIds;
+    svLastVoterIds = voterIds;
   });
 }
 
@@ -2457,10 +2417,28 @@ function initSoireeStandaloneIfNeeded(){
     svCalMonth.setMonth(svCalMonth.getMonth() + 1);
     svRenderCalendar();
   });
-  document.getElementById('sv-publishDatesBtn').addEventListener('click', () => {
-    const unique = Array.from(svSelectedDates).sort();
-    if (unique.length < 2){ alert('Sélectionne au moins deux dates dans le calendrier.'); return; }
-    svSaveEvent({ dateOptions: unique }).then(() => {
+  document.getElementById('sv-publishVotingBtn').addEventListener('click', () => {
+    const uniqueDates = Array.from(svSelectedDates).sort();
+    const checkedGames = Array.from(document.querySelectorAll('.sv-game-cb:checked')).map(cb => cb.value);
+    if (uniqueDates.length < 2){ alert('Sélectionne au moins deux dates dans le calendrier.'); return; }
+    if (checkedGames.length === 0){ alert('Coche au moins un jeu.'); return; }
+    const gamesSnapshot = checkedGames.map(title => {
+      const g = allGames().find(x => x.titre === title);
+      return {
+        title,
+        univers: g ? (g.univers || null) : null,
+        age: g ? (g.age || null) : null,
+        themes: g ? (g.themes || []) : [],
+        note: g ? (g.note || null) : null,
+        resume: g ? (g.resume || null) : null,
+        videoUrl: g ? (g.videoUrl || null) : null,
+        imageUrl: g ? (g.imageUrl || null) : null,
+        playersStr: g ? playersLabel(g) : '',
+        durationStr: g ? durationLabel(g) : '',
+        meta: g ? (playersLabel(g) + ' · ' + durationLabel(g)) : ''
+      };
+    });
+    svSaveEvent({ dateOptions: uniqueDates, gameOptions: gamesSnapshot }).then(() => {
       document.getElementById('sv-calGrid').dataset.filled = '1';
       svReload();
     });
@@ -2486,47 +2464,16 @@ function initSoireeStandaloneIfNeeded(){
       setTimeout(() => { btn.textContent = 'Copier le lien'; }, 1500);
     });
   });
-  document.getElementById('sv-submitDateVoteBtn').addEventListener('click', () => {
+  document.getElementById('sv-refreshBtn').addEventListener('click', svReload);
+
+  document.getElementById('sv-submitVoteBtn').addEventListener('click', () => {
     const name = document.getElementById('sv-voterName').value.trim();
     const availableDates = Array.from(document.querySelectorAll('.sv-date-cb:checked')).map(cb => cb.value);
+    const gameChoices = Array.from(document.querySelectorAll('.sv-gamevote-cb:checked')).map(cb => cb.value);
     if (!name){ alert('Indique ton prénom.'); return; }
-    svSaveEvent({ ['dateVotes.' + svVoterId]: { name, availableDates, votedAt: new Date().toISOString() } }).then(() => {
-      document.getElementById('sv-dateVoteStatus').textContent = 'Enregistré ✓';
-      setTimeout(() => { document.getElementById('sv-dateVoteStatus').textContent = ''; }, 3000);
-      svReload();
-    });
-  });
-  document.getElementById('sv-refreshDatesBtn').addEventListener('click', svReload);
-  document.getElementById('sv-refreshGamesBtn').addEventListener('click', svReload);
-
-  document.getElementById('sv-publishGamesBtn').addEventListener('click', () => {
-    const checked = Array.from(document.querySelectorAll('.sv-game-cb:checked')).map(cb => cb.value);
-    if (checked.length === 0){ alert('Coche au moins un jeu.'); return; }
-    const gamesSnapshot = checked.map(title => {
-      const g = allGames().find(x => x.titre === title);
-      return {
-        title,
-        univers: g ? (g.univers || null) : null,
-        age: g ? (g.age || null) : null,
-        themes: g ? (g.themes || []) : [],
-        note: g ? (g.note || null) : null,
-        resume: g ? (g.resume || null) : null,
-        videoUrl: g ? (g.videoUrl || null) : null,
-        imageUrl: g ? (g.imageUrl || null) : null,
-        playersStr: g ? playersLabel(g) : '',
-        durationStr: g ? durationLabel(g) : '',
-        meta: g ? (playersLabel(g) + ' · ' + durationLabel(g)) : ''
-      };
-    });
-    svSaveEvent({ gameOptions: gamesSnapshot }).then(svReload);
-  });
-  document.getElementById('sv-submitGameVoteBtn').addEventListener('click', () => {
-    const name = document.getElementById('sv-gameVoterName').value.trim();
-    const choices = Array.from(document.querySelectorAll('.sv-gamevote-cb:checked')).map(cb => cb.value);
-    if (!name){ alert('Indique ton prénom.'); return; }
-    svSaveEvent({ ['gameVotes.' + svVoterId]: { name, choices, votedAt: new Date().toISOString() } }).then(() => {
-      document.getElementById('sv-gameVoteStatus').textContent = 'Enregistré ✓';
-      setTimeout(() => { document.getElementById('sv-gameVoteStatus').textContent = ''; }, 3000);
+    svSaveEvent({ ['votes.' + svVoterId]: { name, availableDates, gameChoices, votedAt: new Date().toISOString() } }).then(() => {
+      document.getElementById('sv-voteStatus').textContent = 'Enregistré ✓';
+      setTimeout(() => { document.getElementById('sv-voteStatus').textContent = ''; }, 3000);
       svReload();
     });
   });
