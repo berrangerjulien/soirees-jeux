@@ -158,8 +158,9 @@
     background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
     padding:16px;display:flex;flex-direction:column;gap:8px;
     transition:border-color .2s, box-shadow .2s, transform .15s;
-    overflow:hidden;
+    overflow:hidden;cursor:pointer;
   }
+  .card:hover{border-color:var(--accent-dim);}
   .card.picked{
     border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
     transform:translateY(-2px);
@@ -728,7 +729,8 @@ service cloud.firestore {
         </div>
         <div id="sv-gameChecklist" style="max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:8px;"></div>
 
-        <button class="save-btn" id="sv-publishVotingBtn" type="button" style="margin-top:20px;display:block;">Publier le sondage (dates + jeux)</button>
+        <button class="save-btn" id="sv-publishVotingBtn" type="button" style="margin-top:20px;display:block;">Publier le sondage</button>
+        <div class="hint" style="margin-top:8px;">Les dates sont facultatives &mdash; laisse le calendrier vide pour ne sonder que les jeux.</div>
       </div>
 
       <div class="panel" id="sv-votePanel" style="display:none;">
@@ -759,6 +761,8 @@ service cloud.firestore {
         <div id="sv-gameResults"></div>
         <div id="sv-validateGameRow" style="margin-top:12px;"></div>
         <div class="hint" id="sv-voterCount" style="margin-top:14px;"></div>
+        <h3 style="font-size:0.85rem;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.06em;margin:18px 0 10px 0;">Qui a voté</h3>
+        <div id="sv-voterDetail"></div>
       </div>
     </div>
 
@@ -857,6 +861,15 @@ service cloud.firestore {
   </div>
 </div>
 
+<div class="modal-overlay" id="gameDetailOverlay">
+  <div class="modal" style="max-width:560px;">
+    <div id="gd-content"></div>
+    <div class="actions">
+      <button class="cancel-btn" id="gd-closeBtn" type="button">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="sessionModalOverlay">
   <div class="modal">
     <h2 id="sessionModalTitle">Enregistrer une partie</h2>
@@ -895,6 +908,12 @@ service cloud.firestore {
     <div class="frow" id="s-winners-row">
       <label for="s-winners">Gagnant(s) * (séparés par des virgules, parmi les joueurs)</label>
       <input type="text" id="s-winners" placeholder="Ex. Julien">
+    </div>
+    <div class="frow">
+      <label for="s-soiree">Soirée liée (optionnel)</label>
+      <select id="s-soiree">
+        <option value="">Aucune</option>
+      </select>
     </div>
     <div class="frow">
       <label for="s-notes">Notes (optionnel)</label>
@@ -939,7 +958,7 @@ let sessions = loadJSON(SESSIONS_KEY, []);
 
 function saveCustomGames(){ saveJSON(STORAGE_KEY, customGames); pushLibraryToFirestore(); }
 function saveOverrides(){ saveJSON(OVERRIDES_KEY, overrides); pushLibraryToFirestore(); }
-function saveSessions(){ saveJSON(SESSIONS_KEY, sessions); }
+function saveSessions(){ saveJSON(SESSIONS_KEY, sessions); pushSessionsToFirestore(); }
 
 let libraryPushTimer = null;
 function pushLibraryToFirestore(){
@@ -969,6 +988,34 @@ function pullLibraryFromFirestore(){
     updateRestoreBtn();
     render();
   }).catch(err => console.warn('Lecture bibliothèque partagée impossible :', err));
+}
+
+let sessionsPushTimer = null;
+function pushSessionsToFirestore(){
+  if (!(typeof isAdmin === 'function' && isAdmin())) return;
+  if (!initFirebase()) return;
+  clearTimeout(sessionsPushTimer);
+  sessionsPushTimer = setTimeout(() => {
+    fbDb.collection('appdata').doc('sessions').set({
+      sessions, updatedAt: new Date().toISOString()
+    }).catch(err => {
+      console.error(err);
+      alert("Erreur lors de la sauvegarde partagée des parties : " + err.message);
+    });
+  }, 600);
+}
+
+function pullSessionsFromFirestore(){
+  if (!initFirebase()) return;
+  fbDb.collection('appdata').doc('sessions').get().then(doc => {
+    if (!doc.exists) return;
+    const data = doc.data();
+    if (Array.isArray(data.sessions)){
+      sessions = data.sessions;
+      saveJSON(SESSIONS_KEY, sessions);
+      renderStatsAndSessions();
+    }
+  }).catch(err => console.warn('Lecture parties partagées impossible :', err));
 }
 
 function allGames(){
@@ -1071,7 +1118,7 @@ function cardHTML(g, picked){
   const r = effRange(g);
   const widened = state.useExt && g.ext_notes && g.ext_notes.length > 0
     && (r.pmin !== g.pmin || r.pmax !== g.pmax);
-  return '<div class="card' + (picked?' picked':'') + '" data-id="' + g.id + '">'
+  return '<div class="card' + (picked?' picked':'') + '" data-id="' + g.id + '" data-clickable="1">'
     + (g.imageUrl ? '<img class="card-img" src="' + escapeHTML(g.imageUrl) + '" alt="' + escapeHTML(g.titre) + '" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;card-img card-img-broken&quot;>Image indisponible</div>\';">' : '')
     + '<div class="card-top">'
       + '<h3>' + escapeHTML(g.titre) + '</h3>'
@@ -1092,7 +1139,7 @@ function cardHTML(g, picked){
     + (widened ? '<div class="ext-note">&#9989; ' + g.pmin + '–' + g.pmax + ' joueurs de base, étendu grâce à : ' + g.ext_notes.map(escapeHTML).join(', ') + '</div>' : '')
     + (g.resume ? '<div class="resume">' + escapeHTML(g.resume) + '</div>' : '')
     + '<div class="tags">' + g.themes.slice(0,4).map(t=>'<span class="tag">'+escapeHTML(t)+'</span>').join('') + '</div>'
-    + (g.videoUrl ? '<a class="video-link" href="' + escapeHTML(g.videoUrl) + '" target="_blank" rel="noopener">&#9654; Règles en vidéo</a>' : '')
+    + (g.videoUrl ? '<a class="video-link" href="' + escapeHTML(g.videoUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();">&#9654; Règles en vidéo</a>' : '')
     + (g.note ? '<div class="note">Note myludo : <b>' + g.note.toFixed(1) + '</b>/10</div>' : '')
     + '</div>';
 }
@@ -1139,6 +1186,19 @@ function render(){
       const id = parseFloat(btn.getAttribute('data-edit'));
       const g = allGames().find(x => x.id === id);
       if (g) openModal(g);
+    });
+  });
+  grid.querySelectorAll('[data-clickable]').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = parseFloat(card.getAttribute('data-id'));
+      const g = allGames().find(x => x.id === id);
+      if (!g) return;
+      openGameDetail({
+        titre: g.titre, univers: g.univers,
+        playersStr: playersLabel(g), durationStr: durationLabel(g),
+        age: g.age, resume: g.resume, themes: g.themes,
+        videoUrl: g.videoUrl, note: g.note, imageUrl: g.imageUrl
+      });
     });
   });
 }
@@ -1440,8 +1500,16 @@ document.getElementById('s-coop').addEventListener('change', (e) => {
   document.getElementById('s-winners-row').style.display = e.target.checked ? 'none' : 'block';
 });
 
+function populateSoireeSelect(selectedId){
+  const sel = document.getElementById('s-soiree');
+  const list = loadMySoirees();
+  sel.innerHTML = '<option value="">Aucune</option>'
+    + list.map(p => '<option value="' + escapeHTML(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + '>' + escapeHTML(p.title) + '</option>').join('');
+}
+
 function openSessionModal(editingSession){
   populateGameDatalist();
+  populateSoireeSelect(editingSession ? editingSession.soireeId : '');
   sessionFormError.style.display = 'none';
   editSessionId = editingSession ? editingSession.id : null;
 
@@ -1483,7 +1551,10 @@ function closeSessionModal(){
   editSessionId = null;
 }
 
-document.getElementById('openSessionBtn').addEventListener('click', () => openSessionModal(null));
+document.getElementById('openSessionBtn').addEventListener('click', () => {
+  if (!isAdmin()){ alert('Seul le compte admin peut enregistrer des parties.'); return; }
+  openSessionModal(null);
+});
 document.getElementById('cancelSessionBtn').addEventListener('click', closeSessionModal);
 sessionModalOverlay.addEventListener('click', (e) => {
   if (e.target === sessionModalOverlay) closeSessionModal();
@@ -1515,10 +1586,14 @@ document.getElementById('saveSessionBtn').addEventListener('click', () => {
     return;
   }
 
+  const soireeId = document.getElementById('s-soiree').value;
+  const soireeTitle = soireeId ? (document.getElementById('s-soiree').selectedOptions[0].textContent) : null;
+
   const fields = {
     gameTitle, date,
     duration: Number.isFinite(duration) ? duration : null,
-    players, coop, winners, notes: notes || ''
+    players, coop, winners, notes: notes || '',
+    soireeId: soireeId || null, soireeTitle
   };
 
   if (editSessionId !== null){
@@ -1547,12 +1622,13 @@ function sessionCardHTML(s){
       + '<div class="s-meta">' + dateLabel + (s.duration ? ' &middot; ' + s.duration + ' min' : '') + '</div>'
       + '<div class="s-players">' + s.players.map(escapeHTML).join(', ') + '</div>'
       + '<div class="s-winner">' + winnerLabel + '</div>'
-      + (s.notes ? '<div class="s-notes">' + escapeHTML(s.notes) + '</div>' : '')
+      + (s.soireeTitle ? '<div class="s-meta">&#127881; Soirée : ' + escapeHTML(s.soireeTitle) + '</div>' : '')
+    + (s.notes ? '<div class="s-notes">' + escapeHTML(s.notes) + '</div>' : '')
     + '</div>'
-    + '<div class="s-actions">'
+    + (isAdmin() ? '<div class="s-actions">'
       + '<button class="edit-btn" data-sedit="' + s.id + '" title="Modifier">&#9998;</button>'
       + '<button class="del-btn" data-sdel="' + s.id + '" title="Supprimer">&times;</button>'
-    + '</div>'
+    + '</div>' : '')
     + '</div>';
 }
 
@@ -1797,6 +1873,7 @@ function updateAuthUI(){
   }
 
   document.getElementById('openAddBtn').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('openSessionBtn').style.display = isAdmin() ? 'inline-flex' : 'none';
   updateRestoreBtn();
   updateFbStatusUI();
   renderSoireesList();
@@ -2010,7 +2087,46 @@ function svGameMatches(g){
   return true;
 }
 
+let svDetailStore = [];
+
+function gameDetailHTML(o){
+  return (o.imageUrl ? '<img src="' + escapeHTML(o.imageUrl) + '" style="width:100%;height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;" onerror="this.remove()">' : '')
+    + '<h2 style="margin:0 0 4px 0;font-family:Georgia,serif;">' + escapeHTML(o.titre) + '</h2>'
+    + (o.univers ? '<div class="univers" style="margin-bottom:10px;">' + escapeHTML(o.univers) + '</div>' : '')
+    + '<div class="badges" style="margin-bottom:14px;">'
+      + '<span class="badge">' + escapeHTML(o.playersStr || '') + '</span>'
+      + '<span class="badge">' + escapeHTML(o.durationStr || '') + '</span>'
+      + (o.age ? '<span class="badge">' + escapeHTML(o.age) + '</span>' : '')
+    + '</div>'
+    + (o.resume ? '<p style="color:var(--ink-dim);line-height:1.5;margin:0 0 12px 0;">' + escapeHTML(o.resume) + '</p>' : '<p style="color:var(--ink-dim);font-style:italic;margin:0 0 12px 0;">Pas de résumé renseigné.</p>')
+    + '<div class="tags" style="margin-bottom:12px;">' + (o.themes || []).map(t=>'<span class="tag">'+escapeHTML(t)+'</span>').join('') + '</div>'
+    + (o.videoUrl ? '<a class="video-link" href="' + escapeHTML(o.videoUrl) + '" target="_blank" rel="noopener">&#9654; Règles en vidéo</a>' : '')
+    + (o.note ? '<div class="note" style="margin-top:12px;">Note myludo : <b>' + o.note.toFixed(1) + '</b>/10</div>' : '');
+}
+
+function openGameDetail(o){
+  document.getElementById('gd-content').innerHTML = gameDetailHTML(o);
+  document.getElementById('gameDetailOverlay').classList.add('open');
+}
+document.getElementById('gd-closeBtn').addEventListener('click', () => {
+  document.getElementById('gameDetailOverlay').classList.remove('open');
+});
+document.getElementById('gameDetailOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'gameDetailOverlay') document.getElementById('gameDetailOverlay').classList.remove('open');
+});
+
+function wireDetailButtons(container){
+  container.querySelectorAll('[data-detailidx]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openGameDetail(svDetailStore[parseInt(btn.getAttribute('data-detailidx'))]);
+    });
+  });
+}
+
 function voteCardHTML(o){
+  const idx = svDetailStore.push(o) - 1;
   return '<label class="vote-card' + (o.checked?' picked':'') + '">'
     + '<input type="checkbox" class="' + o.checkboxClass + '" value="' + escapeHTML(o.value) + '"' + (o.checked?' checked':'') + '>'
     + (o.imageUrl ? '<img class="vote-card-img" src="' + escapeHTML(o.imageUrl) + '" alt="" loading="lazy" onerror="this.remove()">' : '')
@@ -2024,7 +2140,8 @@ function voteCardHTML(o){
       + '</div>'
       + (o.resume ? '<div class="resume">' + escapeHTML(o.resume) + '</div>' : '')
       + '<div class="tags">' + (o.themes || []).slice(0,4).map(t=>'<span class="tag">'+escapeHTML(t)+'</span>').join('') + '</div>'
-      + (o.videoUrl ? '<a class="video-link" href="' + escapeHTML(o.videoUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();">&#9654; Règles en vidéo</a>' : '')
+      + '<button type="button" class="video-link" data-detailidx="' + idx + '" style="background:none;border:none;cursor:pointer;padding:0;margin-top:4px;">&#8505;&nbsp;Détails</button>'
+      + (o.videoUrl ? '<a class="video-link" href="' + escapeHTML(o.videoUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="margin-left:10px;">&#9654; Règles en vidéo</a>' : '')
       + (o.note ? '<div class="note">Note myludo : <b>' + o.note.toFixed(1) + '</b>/10</div>' : '')
     + '</div>'
   + '</label>';
@@ -2038,6 +2155,7 @@ function svRenderGameFilterChecklist(){
     Array.from(document.querySelectorAll('.sv-game-cb:checked')).map(cb => cb.value)
   );
   container.className = 'vote-grid';
+  svDetailStore = [];
   container.innerHTML = list.map(g => voteCardHTML({
     checkboxClass: 'sv-game-cb',
     value: g.titre,
@@ -2046,6 +2164,7 @@ function svRenderGameFilterChecklist(){
     playersStr: playersLabel(g), durationStr: durationLabel(g),
     age: g.age, resume: g.resume, themes: g.themes, videoUrl: g.videoUrl, note: g.note
   })).join('') || '<div style="color:var(--ink-dim);font-size:0.85rem;padding:8px;">Aucun jeu ne correspond à ces critères.</div>';
+  wireDetailButtons(container);
 }
 
 function svSetupGameFilterOnce(){
@@ -2225,6 +2344,7 @@ function svRender(){
       const myChoices = myVote ? (myVote.gameChoices || []) : [];
       const checklistEl = document.getElementById('sv-gameVoteChecklist');
       checklistEl.className = 'vote-grid';
+      svDetailStore = [];
       checklistEl.innerHTML = ev.gameOptions.map(pg => voteCardHTML({
         checkboxClass: 'sv-gamevote-cb',
         value: pg.title,
@@ -2234,6 +2354,7 @@ function svRender(){
         durationStr: pg.durationStr || (pg.meta ? pg.meta.split(' · ')[1] : ''),
         age: pg.age, resume: pg.resume, themes: pg.themes, videoUrl: pg.videoUrl, note: pg.note
       })).join('');
+      wireDetailButtons(checklistEl);
 
       const gameTally = {};
       ev.gameOptions.forEach(pg => gameTally[pg.title] = 0);
@@ -2259,6 +2380,28 @@ function svRender(){
 
     const totalVoters = Object.keys(votes).length;
     document.getElementById('sv-voterCount').textContent = totalVoters + ' personne(s) ont répondu.';
+
+    const voterDetailEl = document.getElementById('sv-voterDetail');
+    if (admin){
+      const entries = Object.values(votes);
+      voterDetailEl.innerHTML = entries.length > 0
+        ? entries.map(v => {
+            const dateBits = (v.availableDates || []).map(formatDateFR).join(', ');
+            const gameBits = (v.gameChoices || []).join(', ');
+            return '<div class="guest-row">'
+              + '<span class="guest-name">' + escapeHTML(v.name || '?') + '</span>'
+              + '<span class="guest-contact" style="font-family:inherit;">'
+                + (dateBits ? 'Dispo : ' + escapeHTML(dateBits) : '')
+                + (dateBits && gameBits ? ' — ' : '')
+                + (gameBits ? 'Jeux : ' + escapeHTML(gameBits) : '')
+                + (!dateBits && !gameBits ? 'Aucune réponse cochée' : '')
+              + '</span>'
+            + '</div>';
+          }).join('')
+        : '<div style="color:var(--ink-dim);font-size:0.85rem;">Personne n\'a encore répondu.</div>';
+    } else {
+      voterDetailEl.innerHTML = '';
+    }
   }
 
   if (ev.status === 'done'){
@@ -2439,8 +2582,11 @@ function initSoireeStandaloneIfNeeded(){
   document.getElementById('sv-publishVotingBtn').addEventListener('click', () => {
     const uniqueDates = Array.from(svSelectedDates).sort();
     const checkedGames = Array.from(document.querySelectorAll('.sv-game-cb:checked')).map(cb => cb.value);
-    if (uniqueDates.length < 2){ alert('Sélectionne au moins deux dates dans le calendrier.'); return; }
-    if (checkedGames.length === 0){ alert('Coche au moins un jeu.'); return; }
+    if (uniqueDates.length === 0 && checkedGames.length === 0){
+      alert('Propose au moins une date ou au moins un jeu.');
+      return;
+    }
+    if (uniqueDates.length === 1){ alert('Propose au moins deux dates, ou aucune si tu ne veux pas sonder les dates.'); return; }
     const gamesSnapshot = checkedGames.map(title => {
       const g = allGames().find(x => x.titre === title);
       return {
@@ -2509,6 +2655,7 @@ updateFbStatusUI();
 renderSoireesList();
 initAuthListener();
 pullLibraryFromFirestore();
+pullSessionsFromFirestore();
 initSoireeStandaloneIfNeeded();
 </script>
 </body>
